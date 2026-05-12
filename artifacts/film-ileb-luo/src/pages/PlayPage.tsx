@@ -402,27 +402,6 @@ export default function PlayPage() {
                 )}
               </div>
 
-              {/* Recommended in sidebar */}
-              {recommended.length > 0 && (
-                <div style={{ padding: '0 0 12px' }}>
-                  <div style={{ padding: '8px 14px', fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, borderTop: '1px solid #1e1e1e' }}>UP NEXT</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {recommended.slice(0, 6).map(card => (
-                      <Link key={card.id} href={`/play/${card.id}`}>
-                        <div style={{ display: 'flex', gap: 10, padding: '8px 14px', cursor: 'pointer', transition: 'background 0.15s' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = '#161616')}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                          <img src={card.image} alt={card.title} style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: 4, flexShrink: 0, background: '#1a1a1a' }} />
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 11, fontWeight: 700, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{card.title}</div>
-                            <div style={{ fontSize: 10, color: '#555' }}>{card.episodeText}</div>
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ) : (
             <div style={{ padding: 20, textAlign: 'center' }}>
@@ -436,6 +415,20 @@ export default function PlayPage() {
           )}
         </div>
       </div>
+
+      {/* Related movies grid — below player, full width */}
+      {recommended.length > 0 && (
+        <div style={{ padding: '24px 24px 40px', borderTop: '1px solid #1a1a1a' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
+            <div style={{ width: 3, height: 18, background: '#e50914', borderRadius: 2 }} />
+            <span style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 14, fontWeight: 900, letterSpacing: 1 }}>MORE LIKE THIS</span>
+            <span style={{ color: '#444', fontSize: 10, fontFamily: 'Arial, sans-serif', marginLeft: 4, textTransform: 'uppercase' }}>{content.category}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '16px 12px' }}>
+            {recommended.map(card => <VideoCard key={card.id} card={card} />)}
+          </div>
+        </div>
+      )}
     </div>
   );
 

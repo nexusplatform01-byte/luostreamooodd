@@ -6,15 +6,15 @@ import { setUser } from '../lib/db';
 import {
   apiDeposit, apiPollStatus, apiValidatePhone,
   formatUgPhone, isPaymentSuccess, isPaymentFailed,
-  StatusResult,
+  detectProvider, getDepositError, StatusResult,
 } from '../lib/payment';
 
 type Step = 'plans' | 'pay' | 'awaiting' | 'success' | 'failed';
 
-const PROVIDERS = [
-  { id: 'mtn', name: 'MTN Mobile Money', color: '#f5a623', emoji: '📱', hint: '077, 078' },
-  { id: 'airtel', name: 'Airtel Money', color: '#e50914', emoji: '📲', hint: '070, 075' },
-];
+const PROVIDER_LABELS: Record<string, { name: string; color: string }> = {
+  mtn: { name: 'MTN Mobile Money', color: '#f5a623' },
+  airtel: { name: 'Airtel Money', color: '#e50914' },
+};
 
 const POLL_INTERVAL = 4000;
 const POLL_MAX = 45;
@@ -24,13 +24,12 @@ export default function VipModal() {
   const [plans, setPlans] = useState<PlanDoc[]>([]);
   const [step, setStep] = useState<Step>('plans');
   const [selectedPlan, setSelectedPlan] = useState<PlanDoc | null>(null);
-  const [provider, setProvider] = useState('mtn');
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
+  const [payError, setPayError] = useState('');
   const [validating, setValidating] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
   const [failMsg, setFailMsg] = useState('');
-  const [internalRef, setInternalRef] = useState('');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCount = useRef(0);
 
@@ -41,6 +40,7 @@ export default function VipModal() {
       setSelectedPlan(null);
       setPhone('');
       setPhoneError('');
+      setPayError('');
       setStatusMsg('');
       setFailMsg('');
     }
@@ -53,6 +53,9 @@ export default function VipModal() {
 
   if (!vipModalOpen) return null;
 
+  const detectedProvider = detectProvider(phone);
+  const providerInfo = detectedProvider ? PROVIDER_LABELS[detectedProvider] : null;
+
   const calcEnd = (plan: PlanDoc): Date => {
     const end = new Date();
     if (plan.durationUnit === 'day') end.setDate(end.getDate() + plan.duration);
@@ -62,7 +65,7 @@ export default function VipModal() {
     return end;
   };
 
-  const activateVip = async (plan: PlanDoc, ref: string, phone: string, providerStr: string) => {
+  const activateVip = async (plan: PlanDoc, ref: string, formattedPhone: string, prov: string) => {
     if (!user) return;
     const start = new Date();
     const end = calcEnd(plan);
@@ -74,14 +77,14 @@ export default function VipModal() {
     });
     await addTransaction({
       type: 'subscription',
-      desc: `${plan.name} VIP — ${providerStr.toUpperCase()} Mobile Money — ${phone}`,
+      desc: `${plan.name} VIP — ${(PROVIDER_LABELS[prov]?.name || prov)} — ${formattedPhone}`,
       amount: plan.price, date: Timestamp.fromDate(start), status: 'completed',
-      internalRef: ref, phone, provider: providerStr,
+      internalRef: ref, phone: formattedPhone, provider: prov,
     });
     await refreshUser();
   };
 
-  const startPolling = (ref: string, plan: PlanDoc, formattedPhone: string, provStr: string) => {
+  const startPolling = (ref: string, plan: PlanDoc, formattedPhone: string, prov: string) => {
     pollCount.current = 0;
     pollRef.current = setInterval(async () => {
       pollCount.current++;
@@ -89,7 +92,7 @@ export default function VipModal() {
         const st: StatusResult = await apiPollStatus(ref);
         if (isPaymentSuccess(st)) {
           stopPolling();
-          await activateVip(plan, ref, formattedPhone, provStr);
+          await activateVip(plan, ref, formattedPhone, prov);
           setStep('success');
         } else if (isPaymentFailed(st)) {
           stopPolling();
@@ -97,37 +100,34 @@ export default function VipModal() {
           setStep('failed');
         } else if (pollCount.current >= POLL_MAX) {
           stopPolling();
-          setFailMsg('Payment timed out. If money was deducted, please contact support.');
+          setFailMsg('Payment confirmation timed out. If money was deducted, please contact support.');
           setStep('failed');
         } else {
-          setStatusMsg(`Waiting for confirmation on ${formattedPhone}… (${pollCount.current}/${POLL_MAX})`);
+          setStatusMsg(`Waiting for confirmation on ${formattedPhone} (${pollCount.current}/${POLL_MAX})...`);
         }
-      } catch {
-        // network hiccup — keep polling
-      }
+      } catch { /* network hiccup — keep polling */ }
     }, POLL_INTERVAL);
   };
 
   const handlePay = async () => {
     if (!selectedPlan || !user) return;
-    const err = phone.replace(/\D/g, '').length < 9 ? 'Enter a valid phone number (at least 9 digits)' : '';
-    if (err) { setPhoneError(err); return; }
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length < 9) { setPhoneError('Enter a valid phone number (at least 9 digits)'); return; }
+    if (!detectedProvider) { setPhoneError('Phone not recognised as MTN or Airtel. Use 077/078 for MTN or 070/075 for Airtel.'); return; }
     setPhoneError('');
+    setPayError('');
     setValidating(true);
 
     const formatted = formatUgPhone(phone);
 
     try {
-      // Validate phone first
       const validation = await apiValidatePhone(formatted);
       if (!validation.success) {
-        setPhoneError(validation.message || 'Phone number is invalid or not registered for mobile money.');
+        setPhoneError(validation.message || 'Phone number is not registered for mobile money.');
         setValidating(false);
         return;
       }
-    } catch {
-      // Proceed anyway if validation call fails (network issue)
-    }
+    } catch { /* proceed anyway if validation call fails */ }
 
     try {
       const result = await apiDeposit(
@@ -137,18 +137,17 @@ export default function VipModal() {
       );
 
       if (!result.success && !result.internal_reference) {
-        setPhoneError(result.message || 'Could not initiate payment. Please try again.');
+        setPayError(getDepositError(result));
         setValidating(false);
         return;
       }
 
       const ref = result.internal_reference || result.reference;
-      setInternalRef(ref);
       setStatusMsg(`A payment prompt has been sent to ${formatted}. Please confirm on your phone.`);
       setStep('awaiting');
-      startPolling(ref, selectedPlan, formatted, provider);
-    } catch (e: any) {
-      setPhoneError('Network error. Please check your connection and try again.');
+      startPolling(ref, selectedPlan, formatted, detectedProvider);
+    } catch {
+      setPayError('Network error — please check your connection and try again.');
     } finally {
       setValidating(false);
     }
@@ -160,10 +159,7 @@ export default function VipModal() {
     setStep('pay');
   };
 
-  const handleClose = () => {
-    stopPolling();
-    closeVip();
-  };
+  const handleClose = () => { stopPolling(); closeVip(); };
 
   const defaultPlans: PlanDoc[] = plans.length ? plans : [
     { id: 'daily', name: 'DAILY', price: 2000, duration: 1, durationUnit: 'day', features: 'HD STREAMING, NO ADS, 1 DEVICE', isActive: true, color: '#22c55e' },
@@ -186,67 +182,54 @@ export default function VipModal() {
     />
   );
 
-  /* ── SUCCESS ── */
+  /* SUCCESS */
   if (step === 'success') return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {overlay}
-      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 20, padding: '48px 40px', textAlign: 'center', border: '1px solid rgba(34,197,94,0.3)', minWidth: 280 }}>
-        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" style={{ marginBottom: 16 }}>
+      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 16, padding: '36px 32px', textAlign: 'center', border: '1px solid rgba(34,197,94,0.3)', minWidth: 260 }}>
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" style={{ marginBottom: 14 }}>
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/>
         </svg>
-        <div style={{ color: '#22c55e', fontSize: 18, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif' }}>VIP ACTIVATED!</div>
-        <div style={{ color: '#666', fontSize: 12, marginTop: 8, fontFamily: 'Arial, sans-serif' }}>{selectedPlan?.name} PLAN IS NOW ACTIVE</div>
-        <button onClick={handleClose} style={{ marginTop: 20, padding: '8px 24px', background: '#22c55e', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>CONTINUE WATCHING</button>
+        <div style={{ color: '#22c55e', fontSize: 16, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif' }}>VIP ACTIVATED!</div>
+        <div style={{ color: '#555', fontSize: 11, marginTop: 6, fontFamily: 'Arial, sans-serif' }}>{selectedPlan?.name} PLAN IS NOW ACTIVE</div>
+        <button onClick={handleClose} style={{ marginTop: 18, padding: '8px 22px', background: '#22c55e', border: 'none', borderRadius: 6, color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'Arial, sans-serif', letterSpacing: 1 }}>CONTINUE WATCHING</button>
       </div>
     </div>
   );
 
-  /* ── FAILED ── */
+  /* FAILED */
   if (step === 'failed') return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {overlay}
-      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 20, padding: '40px 36px', textAlign: 'center', border: '1px solid rgba(229,9,20,0.3)', minWidth: 300, maxWidth: 380 }}>
-        <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#e50914" strokeWidth="2" strokeLinecap="round" style={{ marginBottom: 14 }}>
+      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 16, padding: '32px 28px', textAlign: 'center', border: '1px solid rgba(229,9,20,0.3)', minWidth: 280, maxWidth: 360 }}>
+        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#e50914" strokeWidth="2" strokeLinecap="round" style={{ marginBottom: 12 }}>
           <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
         </svg>
-        <div style={{ color: '#e50914', fontSize: 16, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif', marginBottom: 10 }}>PAYMENT FAILED</div>
-        <div style={{ color: '#666', fontSize: 11, lineHeight: 1.6, fontFamily: 'Arial, sans-serif', marginBottom: 20 }}>{failMsg}</div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button onClick={() => setStep('pay')} style={{ padding: '9px 20px', background: '#e50914', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>TRY AGAIN</button>
-          <button onClick={handleClose} style={{ padding: '9px 20px', background: '#2a2a2a', border: 'none', borderRadius: 8, color: '#888', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>CANCEL</button>
+        <div style={{ color: '#e50914', fontSize: 14, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>PAYMENT FAILED</div>
+        <div style={{ color: '#666', fontSize: 11, lineHeight: 1.6, fontFamily: 'Arial, sans-serif', marginBottom: 18 }}>{failMsg}</div>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          <button onClick={() => setStep('pay')} style={{ padding: '8px 18px', background: '#e50914', border: 'none', borderRadius: 6, color: '#fff', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'Arial, sans-serif', letterSpacing: 1 }}>TRY AGAIN</button>
+          <button onClick={handleClose} style={{ padding: '8px 18px', background: '#2a2a2a', border: 'none', borderRadius: 6, color: '#777', fontWeight: 700, fontSize: 11, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>CANCEL</button>
         </div>
       </div>
     </div>
   );
 
-  /* ── AWAITING PAYMENT ── */
+  /* AWAITING */
   if (step === 'awaiting') return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {overlay}
-      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 20, padding: '48px 40px', textAlign: 'center', border: `1px solid ${PROVIDERS.find(p => p.id === provider)?.color || '#f5a623'}44`, minWidth: 300, maxWidth: 380 }}>
-        {/* Pulsing ring */}
-        <div style={{ position: 'relative', width: 72, height: 72, margin: '0 auto 24px' }}>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid ${PROVIDERS.find(p => p.id === provider)?.color || '#f5a623'}33`, animation: 'pulse-ring 1.6s ease-out infinite' }} />
-          <div style={{ position: 'absolute', inset: 6, borderRadius: '50%', border: `3px solid #2a2a2a`, borderTop: `3px solid ${PROVIDERS.find(p => p.id === provider)?.color || '#f5a623'}`, animation: 'spin 1s linear infinite' }} />
-          <div style={{ position: 'absolute', inset: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-            {PROVIDERS.find(p => p.id === provider)?.emoji || '📱'}
-          </div>
+      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 16, padding: '36px 30px', textAlign: 'center', border: `1px solid ${providerInfo?.color || '#f5a623'}33`, minWidth: 280, maxWidth: 360 }}>
+        <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 20px' }}>
+          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid ${providerInfo?.color || '#f5a623'}22`, animation: 'pulse-ring 1.6s ease-out infinite' }} />
+          <div style={{ position: 'absolute', inset: 6, borderRadius: '50%', border: '3px solid #2a2a2a', borderTop: `3px solid ${providerInfo?.color || '#f5a623'}`, animation: 'spin 1s linear infinite' }} />
+          <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse-ring{0%{transform:scale(.9);opacity:.8}100%{transform:scale(1.4);opacity:0}}`}</style>
         </div>
-        <style>{`
-          @keyframes spin { to { transform: rotate(360deg); } }
-          @keyframes pulse-ring { 0% { transform: scale(0.9); opacity: 0.8; } 100% { transform: scale(1.4); opacity: 0; } }
-        `}</style>
-        <div style={{ color: '#fff', fontSize: 15, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>
-          AWAITING PAYMENT
-        </div>
-        <div style={{ color: '#888', fontSize: 11, lineHeight: 1.7, fontFamily: 'Arial, sans-serif', marginBottom: 6 }}>
-          {statusMsg}
-        </div>
-        <div style={{ color: '#555', fontSize: 10, fontFamily: 'Arial, sans-serif', marginBottom: 24 }}>
-          Do not close this window until payment is confirmed
-        </div>
-        <div style={{ background: '#111', borderRadius: 10, padding: '12px 16px', marginBottom: 0, textAlign: 'left' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif', marginBottom: 6 }}>AWAITING PAYMENT</div>
+        <div style={{ color: '#777', fontSize: 11, lineHeight: 1.7, fontFamily: 'Arial, sans-serif', marginBottom: 4 }}>{statusMsg}</div>
+        <div style={{ color: '#444', fontSize: 10, fontFamily: 'Arial, sans-serif', marginBottom: 20 }}>Do not close this window until payment is confirmed</div>
+        <div style={{ background: '#111', borderRadius: 8, padding: '10px 14px', textAlign: 'left' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
             <span style={{ color: '#555', fontSize: 10, fontFamily: 'Arial, sans-serif' }}>PLAN</span>
             <span style={{ color: '#aaa', fontSize: 10, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>{selectedPlan?.name}</span>
           </div>
@@ -259,137 +242,133 @@ export default function VipModal() {
     </div>
   );
 
-  /* ── PAYMENT FORM ── */
+  /* PAYMENT FORM */
   if (step === 'pay' && selectedPlan) return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {overlay}
-      <div style={{ position: 'relative', background: 'linear-gradient(145deg,#1a1a1a,#111)', borderRadius: 20, width: 420, maxWidth: '95vw', padding: '32px 28px', boxShadow: '0 32px 100px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '95vh', overflowY: 'auto' }}>
-        <button onClick={() => setStep('plans')} style={{ position: 'absolute', top: 14, left: 16, background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontFamily: 'Arial, sans-serif' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-          BACK
+      <div style={{ position: 'relative', background: 'linear-gradient(145deg,#1a1a1a,#111)', borderRadius: 16, width: 380, maxWidth: '94vw', padding: '26px 24px', boxShadow: '0 24px 80px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '95vh', overflowY: 'auto' }}>
+        <button onClick={() => setStep('plans')} style={{ position: 'absolute', top: 12, left: 14, background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontFamily: 'Arial, sans-serif' }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> BACK
         </button>
-        <button onClick={handleClose} style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        <button onClick={handleClose} style={{ position: 'absolute', top: 12, right: 14, background: 'none', border: 'none', color: '#555', cursor: 'pointer' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
 
-        <div style={{ textAlign: 'center', marginBottom: 24, marginTop: 10 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 20, padding: '5px 14px', marginBottom: 10 }}>
-            <span style={{ fontSize: 14 }}>📲</span>
-            <span style={{ color: '#f5a623', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 2 }}>MOBILE MONEY PAYMENT</span>
-          </div>
+        <div style={{ textAlign: 'center', marginBottom: 20, marginTop: 8 }}>
+          <div style={{ color: '#f5a623', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 10, letterSpacing: 2, marginBottom: 6 }}>MOBILE MONEY PAYMENT</div>
           <div style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 20, fontWeight: 900 }}>
             UGX {selectedPlan.price.toLocaleString()}
-            <span style={{ fontSize: 12, color: '#555', fontWeight: 400, marginLeft: 6 }}>/ {durationLabel(selectedPlan)}</span>
+            <span style={{ fontSize: 11, color: '#555', fontWeight: 400, marginLeft: 5 }}>/ {durationLabel(selectedPlan)}</span>
           </div>
-          <div style={{ color: '#555', fontSize: 11, marginTop: 4, fontFamily: 'Arial, sans-serif' }}>{selectedPlan.name} PLAN</div>
+          <div style={{ color: '#555', fontSize: 10, marginTop: 3, fontFamily: 'Arial, sans-serif' }}>{selectedPlan.name} PLAN</div>
         </div>
 
-        {/* Provider */}
-        <div style={{ marginBottom: 20 }}>
-          <div style={{ fontSize: 11, color: '#555', fontWeight: 700, letterSpacing: 1.5, fontFamily: 'Arial, sans-serif', marginBottom: 10 }}>SELECT PROVIDER</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {PROVIDERS.map(p => (
-              <button key={p.id} onClick={() => setProvider(p.id)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: provider === p.id ? `${p.color}18` : '#1e1e1e', border: `1.5px solid ${provider === p.id ? p.color : '#2a2a2a'}`, borderRadius: 10, cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}>
-                <span style={{ fontSize: 22 }}>{p.emoji}</span>
-                <div>
-                  <div style={{ color: provider === p.id ? p.color : '#aaa', fontSize: 11, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>{p.name}</div>
-                  <div style={{ color: '#444', fontSize: 9, fontFamily: 'Arial, sans-serif', marginTop: 1 }}>{p.hint}</div>
-                </div>
-              </button>
-            ))}
+        {/* Error banner */}
+        {payError && (
+          <div style={{ background: 'rgba(229,9,20,0.12)', border: '1px solid rgba(229,9,20,0.3)', borderRadius: 8, padding: '9px 12px', marginBottom: 14, color: '#e50914', fontSize: 11, fontFamily: 'Arial, sans-serif', lineHeight: 1.5 }}>
+            {payError}
           </div>
-        </div>
+        )}
 
         {/* Phone */}
-        <div style={{ marginBottom: 22 }}>
-          <label style={{ display: 'block', fontSize: 11, color: '#555', fontWeight: 700, letterSpacing: 1.5, fontFamily: 'Arial, sans-serif', marginBottom: 8 }}>PHONE NUMBER</label>
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: 'block', fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1.5, fontFamily: 'Arial, sans-serif', marginBottom: 6 }}>PHONE NUMBER</label>
           <div style={{ position: 'relative' }}>
-            <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: 13, fontFamily: 'Arial, sans-serif', pointerEvents: 'none' }}>+256</span>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#555', fontSize: 12, fontFamily: 'Arial, sans-serif', pointerEvents: 'none' }}>+256</span>
             <input
               type="tel"
               value={phone}
-              onChange={e => { setPhone(e.target.value); setPhoneError(''); }}
+              onChange={e => { setPhone(e.target.value); setPhoneError(''); setPayError(''); }}
               placeholder="701 000 000"
               maxLength={12}
-              style={{ width: '100%', background: '#1a1a1a', border: `1px solid ${phoneError ? '#e50914' : '#2a2a2a'}`, borderRadius: 8, padding: '11px 14px 11px 54px', color: '#fff', fontSize: 14, fontFamily: 'Arial, sans-serif', outline: 'none', boxSizing: 'border-box', letterSpacing: 1 }}
+              style={{ width: '100%', background: '#1a1a1a', border: `1px solid ${phoneError ? '#e50914' : '#2a2a2a'}`, borderRadius: 8, padding: '10px 12px 10px 50px', color: '#fff', fontSize: 13, fontFamily: 'Arial, sans-serif', outline: 'none', boxSizing: 'border-box' }}
             />
           </div>
-          {phoneError && <div style={{ color: '#e50914', fontSize: 10, marginTop: 5, fontFamily: 'Arial, sans-serif' }}>{phoneError}</div>}
-          <div style={{ color: '#444', fontSize: 10, marginTop: 5, fontFamily: 'Arial, sans-serif' }}>A payment prompt will be pushed to this number</div>
+          {phoneError && <div style={{ color: '#e50914', fontSize: 10, marginTop: 4, fontFamily: 'Arial, sans-serif' }}>{phoneError}</div>}
+        </div>
+
+        {/* Auto-detected provider */}
+        <div style={{ marginBottom: 18, background: '#111', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, minHeight: 38 }}>
+          {providerInfo ? (
+            <>
+              <div style={{ width: 8, height: 8, borderRadius: '50%', background: providerInfo.color, flexShrink: 0 }} />
+              <span style={{ color: providerInfo.color, fontSize: 11, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>{providerInfo.name}</span>
+              <span style={{ color: '#22c55e', fontSize: 10, fontFamily: 'Arial, sans-serif', marginLeft: 'auto' }}>DETECTED</span>
+            </>
+          ) : (
+            <span style={{ color: '#444', fontSize: 10, fontFamily: 'Arial, sans-serif' }}>Provider will be auto-detected from phone number</span>
+          )}
         </div>
 
         <button onClick={handlePay} disabled={validating}
-          style={{ width: '100%', padding: '14px', background: `linear-gradient(135deg,${PROVIDERS.find(p => p.id === provider)?.color || '#f5a623'},${provider === 'mtn' ? '#e08a00' : '#c0000a'})`, border: 'none', borderRadius: 10, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 13, letterSpacing: 1.5, cursor: validating ? 'not-allowed' : 'pointer', opacity: validating ? 0.7 : 1, marginBottom: 12 }}>
+          style={{ width: '100%', padding: '12px', background: providerInfo ? `linear-gradient(135deg,${providerInfo.color},${detectedProvider === 'mtn' ? '#e08a00' : '#c0000a'})` : 'linear-gradient(135deg,#e50914,#c0000a)', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: 1.5, cursor: validating ? 'not-allowed' : 'pointer', opacity: validating ? 0.7 : 1, marginBottom: 10 }}>
           {validating ? 'VALIDATING...' : `PAY UGX ${selectedPlan.price.toLocaleString()}`}
         </button>
         <p style={{ textAlign: 'center', color: '#333', fontFamily: 'Arial, sans-serif', fontSize: 10, letterSpacing: 0.8, margin: 0 }}>
-          SECURE MOBILE MONEY · MTN & AIRTEL SUPPORTED · ALL PRICES IN UGX
+          MTN MOBILE MONEY · AIRTEL MONEY · ALL PRICES IN UGX
         </p>
       </div>
     </div>
   );
 
-  /* ── PLAN SELECTION ── */
+  /* PLAN SELECTION */
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {overlay}
-      <div style={{ position: 'relative', background: 'linear-gradient(145deg,#1a1a1a,#111)', borderRadius: 20, width: Math.min(900, activePlans.length * 220 + 96), maxWidth: '97vw', padding: '36px 32px 32px', boxShadow: '0 32px 100px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '95vh', overflowY: 'auto' }}>
-        <button onClick={handleClose} style={{ position: 'absolute', top: 16, right: 18, background: 'none', border: 'none', color: '#666', cursor: 'pointer', display: 'flex' }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      <div style={{ position: 'relative', background: 'linear-gradient(145deg,#1a1a1a,#111)', borderRadius: 16, maxWidth: '96vw', width: 'auto', padding: '28px 24px 24px', boxShadow: '0 24px 80px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '95vh', overflowY: 'auto' }}>
+        <button onClick={handleClose} style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
 
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 20, padding: '6px 16px', marginBottom: 12 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="2" strokeLinecap="round"><path d="M2 19h20M3 9l4 5 5-8 5 8 4-5v10H3z"/></svg>
-            <span style={{ color: '#f5a623', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 2 }}>VIP MEMBERSHIP</span>
+        <div style={{ textAlign: 'center', marginBottom: 20 }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(245,166,35,0.12)', border: '1px solid rgba(245,166,35,0.25)', borderRadius: 20, padding: '4px 12px', marginBottom: 10 }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="2" strokeLinecap="round"><path d="M2 19h20M3 9l4 5 5-8 5 8 4-5v10H3z"/></svg>
+            <span style={{ color: '#f5a623', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 10, letterSpacing: 2 }}>VIP MEMBERSHIP</span>
           </div>
-          <h2 style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 24, fontWeight: 900, margin: '0 0 8px', letterSpacing: 1 }}>UNLOCK PREMIUM EXPERIENCE</h2>
-          <p style={{ color: '#666', fontFamily: 'Arial, sans-serif', fontSize: 12, letterSpacing: 1, margin: '0 0 6px' }}>4K STREAMING · NO ADS · EXCLUSIVE CONTENT · DOWNLOADS</p>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-            <span style={{ fontSize: 15 }}>📱</span>
-            <span style={{ color: '#777', fontSize: 11, fontFamily: 'Arial, sans-serif' }}>Pay via MTN Mobile Money or Airtel Money</span>
-            <span style={{ fontSize: 15 }}>📲</span>
-          </div>
+          <h2 style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 18, fontWeight: 900, margin: '0 0 4px', letterSpacing: 1 }}>UNLOCK PREMIUM</h2>
+          <p style={{ color: '#555', fontFamily: 'Arial, sans-serif', fontSize: 10, letterSpacing: 1, margin: '0 0 4px' }}>4K STREAMING · NO ADS · DOWNLOADS</p>
+          <p style={{ color: '#555', fontFamily: 'Arial, sans-serif', fontSize: 10, margin: 0 }}>Pay via MTN Mobile Money or Airtel Money</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(activePlans.length, 4)}, 1fr)`, gap: 14 }}>
+        {/* Horizontal plan cards */}
+        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
           {activePlans.map((plan, i) => {
             const isPopular = activePlans.length >= 3 && i === Math.floor(activePlans.length / 2);
             const isBest = activePlans.length > 2 && i === activePlans.length - 1;
             const badge = isPopular ? 'POPULAR' : isBest ? 'BEST VALUE' : null;
             return (
-              <div key={plan.id} style={{ position: 'relative', background: isPopular ? 'linear-gradient(145deg,#2a0a0a,#1a0505)' : '#1e1e1e', border: `1px solid ${isPopular ? '#e50914' : 'rgba(255,255,255,0.08)'}`, borderRadius: 16, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 16, transition: 'transform 0.2s', cursor: 'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-4px)')}
+              <div key={plan.id}
+                style={{ position: 'relative', background: isPopular ? 'linear-gradient(145deg,#2a0a0a,#1a0505)' : '#1e1e1e', border: `1px solid ${isPopular ? '#e50914' : 'rgba(255,255,255,0.07)'}`, borderRadius: 12, padding: '18px 14px', display: 'flex', flexDirection: 'column', gap: 10, transition: 'transform 0.2s', cursor: 'pointer', flexShrink: 0, width: 150, minWidth: 130 }}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-3px)')}
                 onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}>
                 {badge && (
-                  <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: badge === 'POPULAR' ? '#e50914' : 'linear-gradient(90deg,#f5a623,#e08a00)', borderRadius: 20, padding: '4px 14px', fontSize: 10, fontFamily: 'Arial, sans-serif', fontWeight: 700, letterSpacing: 1.5, color: '#fff', whiteSpace: 'nowrap' }}>{badge}</div>
+                  <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: badge === 'POPULAR' ? '#e50914' : 'linear-gradient(90deg,#f5a623,#e08a00)', borderRadius: 20, padding: '3px 10px', fontSize: 8, fontFamily: 'Arial, sans-serif', fontWeight: 700, letterSpacing: 1.5, color: '#fff', whiteSpace: 'nowrap' }}>{badge}</div>
                 )}
                 <div>
-                  <div style={{ color: plan.color, fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 2, marginBottom: 10 }}>{plan.name}</div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, flexWrap: 'wrap' }}>
-                    <span style={{ color: '#aaa', fontSize: 12, fontFamily: 'Arial, sans-serif', fontWeight: 700 }}>UGX</span>
-                    <span style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 28, fontWeight: 900 }}>{plan.price.toLocaleString()}</span>
-                    <span style={{ color: '#555', fontFamily: 'Arial, sans-serif', fontSize: 11 }}>/ {durationLabel(plan)}</span>
+                  <div style={{ color: plan.color, fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 9, letterSpacing: 2, marginBottom: 6 }}>{plan.name}</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap' }}>
+                    <span style={{ color: '#777', fontSize: 9, fontFamily: 'Arial, sans-serif', fontWeight: 700 }}>UGX</span>
+                    <span style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{plan.price.toLocaleString()}</span>
                   </div>
+                  <div style={{ color: '#444', fontFamily: 'Arial, sans-serif', fontSize: 9, marginTop: 2 }}>/ {durationLabel(plan)}</div>
                 </div>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8, flex: 1 }}>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
                   {plan.features.split(',').map(f => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#ccc', fontFamily: 'Arial, sans-serif', fontSize: 11, letterSpacing: 0.8 }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={plan.color} strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                    <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 5, color: '#999', fontFamily: 'Arial, sans-serif', fontSize: 9, lineHeight: 1.4 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={plan.color} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M20 6L9 17l-5-5"/></svg>
                       {f.trim()}
                     </li>
                   ))}
                 </ul>
                 <button onClick={() => handleSelectPlan(plan)}
-                  style={{ width: '100%', padding: '12px', background: isPopular ? 'linear-gradient(135deg,#e50914,#c0000a)' : isBest ? 'linear-gradient(135deg,#f5a623,#e08a00)' : `rgba(${plan.color === '#4a9eff' ? '74,158,255' : plan.color === '#22c55e' ? '34,197,94' : '255,255,255'},0.1)`, border: isPopular || isBest ? 'none' : `1px solid ${plan.color}44`, borderRadius: 10, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: 1.5, cursor: 'pointer' }}>
-                  PAY WITH MOBILE MONEY
+                  style={{ width: '100%', padding: '9px 0', background: isPopular ? 'linear-gradient(135deg,#e50914,#c0000a)' : isBest ? 'linear-gradient(135deg,#f5a623,#e08a00)' : `rgba(${plan.color === '#4a9eff' ? '74,158,255' : plan.color === '#22c55e' ? '34,197,94' : '255,255,255'},0.1)`, border: isPopular || isBest ? 'none' : `1px solid ${plan.color}33`, borderRadius: 7, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 10, letterSpacing: 1, cursor: 'pointer' }}>
+                  SELECT
                 </button>
               </div>
             );
           })}
         </div>
-        <p style={{ textAlign: 'center', marginTop: 20, color: '#333', fontFamily: 'Arial, sans-serif', fontSize: 10, letterSpacing: 0.8 }}>
+        <p style={{ textAlign: 'center', marginTop: 14, color: '#333', fontFamily: 'Arial, sans-serif', fontSize: 9, letterSpacing: 0.8 }}>
           MTN MOBILE MONEY · AIRTEL MONEY · CANCEL ANYTIME · ALL PRICES IN UGX
         </p>
       </div>

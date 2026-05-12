@@ -107,3 +107,16 @@ export function isPaymentFailed(status: StatusResult): boolean {
   if (!status.success && status.request_status !== 'pending' && status.request_status !== 'processing') return true;
   return status.request_status === 'failed' || status.request_status === 'error';
 }
+
+export function detectProvider(rawPhone: string): 'mtn' | 'airtel' | null {
+  const digits = rawPhone.replace(/\D/g, '');
+  const local = digits.startsWith('256') ? digits.slice(3) : digits.startsWith('0') ? digits.slice(1) : digits;
+  const p2 = local.slice(0, 2);
+  if (['77', '78', '39'].includes(p2)) return 'mtn';
+  if (['70', '75', '74'].includes(p2)) return 'airtel';
+  return null;
+}
+
+export function getDepositError(result: any): string {
+  return result?.details?.message || result?.details?.error || result?.message || result?.error || 'Payment could not be initiated. Please try again.';
+}
