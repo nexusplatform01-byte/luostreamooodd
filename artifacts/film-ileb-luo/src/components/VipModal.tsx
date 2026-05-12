@@ -296,9 +296,16 @@ export default function VipModal() {
 
   /* PLAN SELECTION */
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
       {overlay}
-      <div style={{ position: 'relative', background: 'linear-gradient(145deg,#1a1a1a,#111)', borderRadius: 16, maxWidth: '96vw', width: 'auto', padding: '28px 24px 24px', boxShadow: '0 24px 80px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '95vh', overflowY: 'auto' }}>
+      <style>{`
+        .vip-plans-grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+        @media (max-width: 480px) { .vip-plans-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+        .vip-plan-card { position: relative; border-radius: 11px; padding: 14px 11px; display: flex; flex-direction: column; gap: 8px; transition: transform 0.2s; cursor: pointer; }
+        .vip-plan-card:hover { transform: translateY(-2px); }
+        @media (max-width: 480px) { .vip-plan-card { padding: 12px 10px; gap: 6px; } }
+      `}</style>
+      <div style={{ position: 'relative', background: 'linear-gradient(145deg,#1a1a1a,#111)', borderRadius: 16, width: '100%', maxWidth: 560, padding: '24px 20px 20px', boxShadow: '0 24px 80px rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.08)', maxHeight: '95vh', overflowY: 'auto' }}>
         <button onClick={handleClose} style={{ position: 'absolute', top: 14, right: 16, background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
@@ -313,38 +320,36 @@ export default function VipModal() {
           <p style={{ color: '#555', fontFamily: 'Arial, sans-serif', fontSize: 10, margin: 0 }}>Pay via MTN Mobile Money or Airtel Money</p>
         </div>
 
-        {/* Horizontal plan cards */}
-        <div style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, scrollbarWidth: 'none' }}>
+        {/* Responsive plan grid */}
+        <div className="vip-plans-grid">
           {activePlans.map((plan, i) => {
             const isPopular = activePlans.length >= 3 && i === Math.floor(activePlans.length / 2);
             const isBest = activePlans.length > 2 && i === activePlans.length - 1;
             const badge = isPopular ? 'POPULAR' : isBest ? 'BEST VALUE' : null;
             return (
-              <div key={plan.id}
-                style={{ position: 'relative', background: isPopular ? 'linear-gradient(145deg,#2a0a0a,#1a0505)' : '#1e1e1e', border: `1px solid ${isPopular ? '#e50914' : 'rgba(255,255,255,0.07)'}`, borderRadius: 12, padding: '18px 14px', display: 'flex', flexDirection: 'column', gap: 10, transition: 'transform 0.2s', cursor: 'pointer', flexShrink: 0, width: 150, minWidth: 130 }}
-                onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-3px)')}
-                onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}>
+              <div key={plan.id} className="vip-plan-card"
+                style={{ background: isPopular ? 'linear-gradient(145deg,#2a0a0a,#1a0505)' : '#1e1e1e', border: `1px solid ${isPopular ? '#e50914' : 'rgba(255,255,255,0.07)'}` }}>
                 {badge && (
-                  <div style={{ position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)', background: badge === 'POPULAR' ? '#e50914' : 'linear-gradient(90deg,#f5a623,#e08a00)', borderRadius: 20, padding: '3px 10px', fontSize: 8, fontFamily: 'Arial, sans-serif', fontWeight: 700, letterSpacing: 1.5, color: '#fff', whiteSpace: 'nowrap' }}>{badge}</div>
+                  <div style={{ position: 'absolute', top: -9, left: '50%', transform: 'translateX(-50%)', background: badge === 'POPULAR' ? '#e50914' : 'linear-gradient(90deg,#f5a623,#e08a00)', borderRadius: 20, padding: '2px 9px', fontSize: 8, fontFamily: 'Arial, sans-serif', fontWeight: 700, letterSpacing: 1.5, color: '#fff', whiteSpace: 'nowrap' }}>{badge}</div>
                 )}
                 <div>
-                  <div style={{ color: plan.color, fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 9, letterSpacing: 2, marginBottom: 6 }}>{plan.name}</div>
+                  <div style={{ color: plan.color, fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 9, letterSpacing: 2, marginBottom: 5 }}>{plan.name}</div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 2, flexWrap: 'wrap' }}>
                     <span style={{ color: '#777', fontSize: 9, fontFamily: 'Arial, sans-serif', fontWeight: 700 }}>UGX</span>
-                    <span style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 20, fontWeight: 900, lineHeight: 1 }}>{plan.price.toLocaleString()}</span>
+                    <span style={{ color: '#fff', fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 18, fontWeight: 900, lineHeight: 1 }}>{plan.price.toLocaleString()}</span>
                   </div>
                   <div style={{ color: '#444', fontFamily: 'Arial, sans-serif', fontSize: 9, marginTop: 2 }}>/ {durationLabel(plan)}</div>
                 </div>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 5, flex: 1 }}>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4, flex: 1 }}>
                   {plan.features.split(',').map(f => (
-                    <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 5, color: '#999', fontFamily: 'Arial, sans-serif', fontSize: 9, lineHeight: 1.4 }}>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={plan.color} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M20 6L9 17l-5-5"/></svg>
+                    <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 4, color: '#999', fontFamily: 'Arial, sans-serif', fontSize: 8, lineHeight: 1.4 }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke={plan.color} strokeWidth="2.5" strokeLinecap="round" style={{ flexShrink: 0, marginTop: 1 }}><path d="M20 6L9 17l-5-5"/></svg>
                       {f.trim()}
                     </li>
                   ))}
                 </ul>
                 <button onClick={() => handleSelectPlan(plan)}
-                  style={{ width: '100%', padding: '9px 0', background: isPopular ? 'linear-gradient(135deg,#e50914,#c0000a)' : isBest ? 'linear-gradient(135deg,#f5a623,#e08a00)' : `rgba(${plan.color === '#4a9eff' ? '74,158,255' : plan.color === '#22c55e' ? '34,197,94' : '255,255,255'},0.1)`, border: isPopular || isBest ? 'none' : `1px solid ${plan.color}33`, borderRadius: 7, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 10, letterSpacing: 1, cursor: 'pointer' }}>
+                  style={{ width: '100%', padding: '8px 0', background: isPopular ? 'linear-gradient(135deg,#e50914,#c0000a)' : isBest ? 'linear-gradient(135deg,#f5a623,#e08a00)' : `rgba(${plan.color === '#4a9eff' ? '74,158,255' : plan.color === '#22c55e' ? '34,197,94' : '255,255,255'},0.1)`, border: isPopular || isBest ? 'none' : `1px solid ${plan.color}33`, borderRadius: 7, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 10, letterSpacing: 1, cursor: 'pointer' }}>
                   SELECT
                 </button>
               </div>
