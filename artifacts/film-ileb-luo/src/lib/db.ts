@@ -81,11 +81,15 @@ export type SubscriptionDoc = {
 
 export type TransactionDoc = {
   id?: string;
-  type: 'subscription' | 'withdrawal' | 'refund';
+  type: 'subscription' | 'withdrawal' | 'withdrawal_fee' | 'refund';
   desc: string;
   amount: number;
   date: Timestamp;
-  status: 'completed' | 'pending';
+  status: 'completed' | 'pending' | 'failed';
+  internalRef?: string;
+  externalRef?: string;
+  phone?: string;
+  provider?: string;
 };
 
 export type SiteSettingsDoc = {
