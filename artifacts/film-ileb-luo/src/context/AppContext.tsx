@@ -5,7 +5,7 @@ import {
 } from 'firebase/auth';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider } from '../lib/firebase';
-import { getUser, setUser, getUserByPhone, UserDoc, getSiteSettings, SiteSettingsDoc } from '../lib/db';
+import { getUser, setUser, getUserByPhone, UserDoc, getSiteSettings, getSeoSettings, SiteSettingsDoc } from '../lib/db';
 
 export const ADMIN_EMAILS = ['mainplatform.nexus@gmail.com', 'panzersonic@gmail.com'];
 
@@ -83,9 +83,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [siteSettings, setSiteSettingsState] = useState<SiteSettingsDoc>(DEFAULT_SITE);
 
   useEffect(() => {
-    getSiteSettings().then(s => {
+    Promise.all([getSiteSettings(), getSeoSettings()]).then(([s, seo]) => {
       setSiteSettingsState(s);
       applySiteToDocument(s);
+      if (seo.title) document.title = seo.title;
     }).catch(() => {});
   }, []);
 

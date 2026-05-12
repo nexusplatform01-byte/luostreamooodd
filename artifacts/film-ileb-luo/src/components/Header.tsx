@@ -171,28 +171,49 @@ export default function Header() {
 
           {/* Filter */}
           <div className="filter_filter_box" onClick={() => { closeAll(); setFilterOpen(v => !v); }} style={{ cursor: 'pointer', position: 'relative' }}>
-            <img
-              className="filter_filter_img"
-              src="https://img.alicdn.com/imgextra/i3/O1CN01E71iNM29PXJkAdEx1_!!6000000008060-2-tps-48-48.png"
-              alt=""
-            />
-            <div className="filter_text" style={{ fontFamily: 'Arial, sans-serif' }}>FILTER</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round">
+              <defs>
+                <linearGradient id="hdr-grad-filter" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#00c6ff"/>
+                  <stop offset="100%" stopColor="#00e676"/>
+                </linearGradient>
+              </defs>
+              <line x1="4" y1="6" x2="20" y2="6" stroke="url(#hdr-grad-filter)"/>
+              <line x1="8" y1="12" x2="16" y2="12" stroke="url(#hdr-grad-filter)"/>
+              <line x1="11" y1="18" x2="13" y2="18" stroke="url(#hdr-grad-filter)"/>
+            </svg>
+            <div className="filter_text" style={{ fontFamily: 'Arial, sans-serif', background: 'linear-gradient(90deg,#00c6ff,#00e676)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>FILTER</div>
           </div>
 
           {/* History */}
           <div className="historyrecord_record_box" onClick={() => { closeAll(); openHistory(); }} style={{ cursor: 'pointer' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round">
+              <defs>
+                <linearGradient id="hdr-grad-history" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#00c6ff"/>
+                  <stop offset="100%" stopColor="#00e676"/>
+                </linearGradient>
+              </defs>
+              <circle cx="12" cy="12" r="10" stroke="url(#hdr-grad-history)"/>
+              <polyline points="12 6 12 12 16 14" stroke="url(#hdr-grad-history)"/>
             </svg>
-            <div className="historyrecord_text" style={{ fontFamily: 'Arial, sans-serif' }}>HISTORY</div>
+            <div className="historyrecord_text" style={{ fontFamily: 'Arial, sans-serif', background: 'linear-gradient(90deg,#00c6ff,#00e676)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>HISTORY</div>
           </div>
 
           {/* Client / App */}
           <div className="useiku_iku_box" onClick={() => { closeAll(); setAppOpen(v => !v); }} style={{ cursor: 'pointer' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="1.5">
-              <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" strokeWidth="1.8" strokeLinecap="round">
+              <defs>
+                <linearGradient id="hdr-grad-app" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#00c6ff"/>
+                  <stop offset="100%" stopColor="#00e676"/>
+                </linearGradient>
+              </defs>
+              <rect x="2" y="3" width="20" height="14" rx="2" stroke="url(#hdr-grad-app)"/>
+              <line x1="8" y1="21" x2="16" y2="21" stroke="url(#hdr-grad-app)"/>
+              <line x1="12" y1="17" x2="12" y2="21" stroke="url(#hdr-grad-app)"/>
             </svg>
-            <div className="useiku_text" style={{ fontFamily: 'Arial, sans-serif' }}>APP</div>
+            <div className="useiku_text" style={{ fontFamily: 'Arial, sans-serif', background: 'linear-gradient(90deg,#00c6ff,#00e676)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>APP</div>
           </div>
 
           {/* User */}
