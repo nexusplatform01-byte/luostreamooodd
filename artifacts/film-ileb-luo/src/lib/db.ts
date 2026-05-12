@@ -1,7 +1,7 @@
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp,
-  QueryConstraint,
+  QueryConstraint, writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebase';
 
@@ -157,6 +157,10 @@ export async function getUserByPhone(phone: string): Promise<UserDoc | null> {
   const snap = await getDocs(q);
   if (snap.empty) return null;
   return snap.docs[0].data() as UserDoc;
+}
+
+export async function deleteUser(uid: string) {
+  await deleteDoc(doc(db, 'users', uid));
 }
 
 export async function getAllUsers(): Promise<UserDoc[]> {
@@ -318,6 +322,14 @@ export async function addTransaction(data: Omit<TransactionDoc, 'id'>): Promise<
 
 export async function deleteTransaction(id: string) {
   await deleteDoc(doc(db, 'transactions', id));
+}
+
+export async function clearTransactionsByType(types: string[]): Promise<number> {
+  const snap = await getDocs(query(collection(db, 'transactions'), where('type', 'in', types)));
+  const batch = writeBatch(db);
+  snap.docs.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+  return snap.docs.length;
 }
 
 // ── Carousel operations ──────────────────────────────────────────────────────

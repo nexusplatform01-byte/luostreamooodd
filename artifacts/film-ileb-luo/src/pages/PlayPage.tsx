@@ -311,7 +311,7 @@ export default function PlayPage() {
       <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           {/* Player */}
-          <div style={{ position: 'relative', background: '#000', width: '100%', maxHeight: 540, overflow: 'hidden' }}>
+          <div style={{ position: 'relative', background: '#000', width: '100%' }}>
             {renderPlayer()}
             {canWatch && currentVideo && (
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '10px 14px', background: 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)', display: 'flex', alignItems: 'center', gap: 12, pointerEvents: 'none' }}>
