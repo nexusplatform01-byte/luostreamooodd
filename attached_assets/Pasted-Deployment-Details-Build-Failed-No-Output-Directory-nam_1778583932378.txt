@@ -1,0 +1,65 @@
+Deployment Details
+Build Failed
+No Output Directory named "public" found after the Build completed. Configure the Output Directory in your Project Settings. Alternatively, configure vercel.json#outputDirectory.
+Created
+github/thevoiceofdestiny0-sketch
+thevoiceofdestiny0-sketch
+Just now
+Status
+Error
+Latest
+Duration
+46s
+Just now
+Environment
+Production
+Domains
+luostreamooodd-api-se-git-4c692e-nexusplatform01-8037s-projects.vercel.app
+luostreamooodd-api-server-g155sysdt.vercel.app
+Source
+main
+27afaf2
+DELETE
+
+Deployment Settings
+3 Recommendations
+Build Logs
+46s
+101 lines
+Find in logs
+CtrlF
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 2.4s using pnpm v10.28.0
+> @workspace/film-ileb-luo@0.0.0 build /vercel/path0/artifacts/film-ileb-luo
+> vite build --config vite.config.ts
+vite v7.3.2 building client environment for production...
+transforming...
+✓ 237 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/public/index.html                     0.84 kB │ gzip:   0.43 kB
+dist/public/assets/index-DBigR0-w.css     86.74 kB │ gzip:  15.87 kB
+dist/public/assets/index-DR2i_3H5.js   1,928.62 kB │ gzip: 548.69 kB
+✓ built in 8.80s
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+Error: No Output Directory named "public" found after the Build completed. Configure the Output Directory in your Project Settings. Alternatively, configure vercel.json#outputDirectory.
+Learn More: https://vercel.link/missing-public-directory
+Deployment Summary
+Deployment Checks
+Assigning Custom Domains
+Runtime Logs
+
+View and debug runtime logs & errors
+
+Observability
+
+Monitor app health & performance
+
+Speed Insights
+
+Not Enabled
+Performance metrics from real user

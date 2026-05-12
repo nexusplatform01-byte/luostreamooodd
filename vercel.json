@@ -1,6 +1,7 @@
 {
-  "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter @workspace/film-ileb-luo run build",
+  "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter @workspace/film-ileb-luo run build",
   "outputDirectory": "artifacts/film-ileb-luo/dist/public",
+  "installCommand": "echo 'install handled in buildCommand'",
   "framework": null,
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
@@ -16,7 +17,7 @@
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
         { "key": "X-XSS-Protection", "value": "1; mode=block" }
       ]
     }
