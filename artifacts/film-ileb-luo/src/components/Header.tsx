@@ -164,7 +164,7 @@ export default function Header() {
                 alt="VIP"
               />
               <div className="crmvip_vip_pop_content" style={{ fontFamily: 'Arial, sans-serif' }}>
-                {user?.isVip ? 'VIP ACTIVE' : 'RENEW VIP'}
+                {user?.isVip ? 'VIP ACTIVE' : 'SUBSCRIBE'}
               </div>
             </a>
           </div>

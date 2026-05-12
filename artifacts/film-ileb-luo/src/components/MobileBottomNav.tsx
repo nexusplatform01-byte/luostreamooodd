@@ -92,7 +92,7 @@ export default function MobileBottomNav() {
             <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               <button onClick={() => { openVip(); setMoreOpen(false); }}
                 style={{ flex: 1, background: 'linear-gradient(135deg,#c8820a,#f5c840)', border: 'none', borderRadius: 10, color: '#3d1f00', padding: '12px', fontSize: 11, fontWeight: 900, letterSpacing: 1, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>
-                ★ RENEW VIP
+                ★ SUBSCRIBE
               </button>
               {!isLoggedIn && (
                 <button onClick={() => { openLogin('login'); setMoreOpen(false); }}
