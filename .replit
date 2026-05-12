@@ -29,8 +29,8 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "PORT=26109 BASE_PATH=/ pnpm --filter @workspace/film-ileb-luo run dev"
-waitForPort = 26109
+args = "PORT=5000 pnpm --filter @workspace/film-ileb-luo run dev"
+waitForPort = 5000
 
 [agent]
 stack = "BEST_EFFORT_FALLBACK"
@@ -39,6 +39,14 @@ expertMode = true
 [postMerge]
 path = "scripts/post-merge.sh"
 timeoutMs = 20000
+
+[[ports]]
+localPort = 3000
+externalPort = 3001
+
+[[ports]]
+localPort = 5000
+externalPort = 80
 
 [[ports]]
 localPort = 8080
