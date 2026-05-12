@@ -6,7 +6,7 @@ import { setUser } from '../lib/db';
 import {
   apiDeposit, apiPollStatus, apiValidatePhone,
   formatUgPhone, isPaymentSuccess, isPaymentFailed,
-  detectProvider, getDepositError, StatusResult,
+  getDepositError, StatusResult,
 } from '../lib/payment';
 
 type Step = 'plans' | 'pay' | 'awaiting' | 'success' | 'failed';
@@ -52,9 +52,6 @@ export default function VipModal() {
   };
 
   if (!vipModalOpen) return null;
-
-  const detectedProvider = detectProvider(phone);
-  const providerInfo = detectedProvider ? PROVIDER_LABELS[detectedProvider] : null;
 
   const calcEnd = (plan: PlanDoc): Date => {
     const end = new Date();
@@ -113,7 +110,6 @@ export default function VipModal() {
     if (!selectedPlan || !user) return;
     const digits = phone.replace(/\D/g, '');
     if (digits.length < 9) { setPhoneError('Enter a valid phone number (at least 9 digits)'); return; }
-    if (!detectedProvider) { setPhoneError('Phone not recognised as MTN or Airtel. Use 077/078 for MTN or 070/075 for Airtel.'); return; }
     setPhoneError('');
     setPayError('');
     setValidating(true);
@@ -145,7 +141,7 @@ export default function VipModal() {
       const ref = result.internal_reference || result.reference;
       setStatusMsg(`A payment prompt has been sent to ${formatted}. Please confirm on your phone.`);
       setStep('awaiting');
-      startPolling(ref, selectedPlan, formatted, detectedProvider);
+      startPolling(ref, selectedPlan, formatted, 'mobile_money');
     } catch {
       setPayError('Network error — please check your connection and try again.');
     } finally {
@@ -219,10 +215,10 @@ export default function VipModal() {
   if (step === 'awaiting') return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {overlay}
-      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 16, padding: '36px 30px', textAlign: 'center', border: `1px solid ${providerInfo?.color || '#f5a623'}33`, minWidth: 280, maxWidth: 360 }}>
+      <div style={{ position: 'relative', background: '#1a1a1a', borderRadius: 16, padding: '36px 30px', textAlign: 'center', border: `1px solid #f5a62333`, minWidth: 280, maxWidth: 360 }}>
         <div style={{ position: 'relative', width: 64, height: 64, margin: '0 auto 20px' }}>
-          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid ${providerInfo?.color || '#f5a623'}22`, animation: 'pulse-ring 1.6s ease-out infinite' }} />
-          <div style={{ position: 'absolute', inset: 6, borderRadius: '50%', border: '3px solid #2a2a2a', borderTop: `3px solid ${providerInfo?.color || '#f5a623'}`, animation: 'spin 1s linear infinite' }} />
+          <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', border: `2px solid #f5a62322`, animation: 'pulse-ring 1.6s ease-out infinite' }} />
+          <div style={{ position: 'absolute', inset: 6, borderRadius: '50%', border: '3px solid #2a2a2a', borderTop: `3px solid #f5a623`, animation: 'spin 1s linear infinite' }} />
           <style>{`@keyframes spin{to{transform:rotate(360deg)}}@keyframes pulse-ring{0%{transform:scale(.9);opacity:.8}100%{transform:scale(1.4);opacity:0}}`}</style>
         </div>
         <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif', marginBottom: 6 }}>AWAITING PAYMENT</div>
@@ -287,21 +283,8 @@ export default function VipModal() {
           {phoneError && <div style={{ color: '#e50914', fontSize: 10, marginTop: 4, fontFamily: 'Arial, sans-serif' }}>{phoneError}</div>}
         </div>
 
-        {/* Auto-detected provider */}
-        <div style={{ marginBottom: 18, background: '#111', borderRadius: 8, padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10, minHeight: 38 }}>
-          {providerInfo ? (
-            <>
-              <div style={{ width: 8, height: 8, borderRadius: '50%', background: providerInfo.color, flexShrink: 0 }} />
-              <span style={{ color: providerInfo.color, fontSize: 11, fontWeight: 700, fontFamily: 'Arial, sans-serif' }}>{providerInfo.name}</span>
-              <span style={{ color: '#22c55e', fontSize: 10, fontFamily: 'Arial, sans-serif', marginLeft: 'auto' }}>DETECTED</span>
-            </>
-          ) : (
-            <span style={{ color: '#444', fontSize: 10, fontFamily: 'Arial, sans-serif' }}>Provider will be auto-detected from phone number</span>
-          )}
-        </div>
-
         <button onClick={handlePay} disabled={validating}
-          style={{ width: '100%', padding: '12px', background: providerInfo ? `linear-gradient(135deg,${providerInfo.color},${detectedProvider === 'mtn' ? '#e08a00' : '#c0000a'})` : 'linear-gradient(135deg,#e50914,#c0000a)', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: 1.5, cursor: validating ? 'not-allowed' : 'pointer', opacity: validating ? 0.7 : 1, marginBottom: 10 }}>
+          style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg,#e50914,#c0000a)', border: 'none', borderRadius: 8, color: '#fff', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 12, letterSpacing: 1.5, cursor: validating ? 'not-allowed' : 'pointer', opacity: validating ? 0.7 : 1, marginBottom: 10 }}>
           {validating ? 'VALIDATING...' : `PAY UGX ${selectedPlan.price.toLocaleString()}`}
         </button>
         <p style={{ textAlign: 'center', color: '#333', fontFamily: 'Arial, sans-serif', fontSize: 10, letterSpacing: 0.8, margin: 0 }}>
