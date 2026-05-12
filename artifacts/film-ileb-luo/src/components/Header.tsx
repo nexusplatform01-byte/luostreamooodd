@@ -86,8 +86,8 @@ export default function Header() {
           {/* Site name — mobile only */}
           <div className="mobile-site-name" style={{ display: 'none', alignItems: 'center', paddingLeft: 4 }}>
             <span style={{ fontFamily: '"Arial Black", Arial, sans-serif', fontSize: 15, fontWeight: 900, letterSpacing: 0.5 }}>
-              <span style={{ color: '#e50914' }}>FILM</span>
-              <span style={{ color: '#fff' }}> ILEB LUO</span>
+              <span style={{ color: '#e50914' }}>LUO</span>
+              <span style={{ color: '#fff' }}> STREAM</span>
             </span>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function Header() {
                     <input
                       className="search_search_input"
                       type="text"
-                      placeholder="SEARCH FILM ILEB LUO"
+                      placeholder="SEARCH LUO STREAM"
                       value={searchValue}
                       onChange={(e) => setSearchValue(e.target.value)}
                       onFocus={() => { if (searchResults.length > 0) setShowSearchDrop(true); }}
@@ -340,7 +340,7 @@ export default function Header() {
                 <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
               </svg>
             </div>
-            <div style={{ color: '#fff', fontSize: 14, fontWeight: 900, letterSpacing: 1, fontFamily: 'Arial Black, Arial, sans-serif', marginBottom: 6 }}>FILM ILEB LUO</div>
+            <div style={{ color: '#fff', fontSize: 14, fontWeight: 900, letterSpacing: 1, fontFamily: 'Arial Black, Arial, sans-serif', marginBottom: 6 }}>LUO STREAM</div>
             <div style={{ color: '#555', fontSize: 10, letterSpacing: 1, fontFamily: 'Arial, sans-serif', marginBottom: 20 }}>GET THE APP FOR THE BEST EXPERIENCE</div>
 
             <div style={{ background: '#111', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '20px', marginBottom: 16 }}>

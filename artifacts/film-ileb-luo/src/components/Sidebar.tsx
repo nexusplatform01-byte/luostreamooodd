@@ -10,13 +10,12 @@ export default function Sidebar() {
 
   return (
     <div className="leftnav_left_box" style={{ display: 'flex', flexDirection: 'column' }}>
-      {/* FILM ILEB LUO Logo */}
+      {/* LUO STREAM Logo */}
       <Link href="/">
         <div className="leftnav_left_logo" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', height: 48 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', lineHeight: 1.1 }}>
-            <span style={{ color: '#ff1a1a', fontSize: 9.5, fontWeight: 900, letterSpacing: '0.05em', fontFamily: '"Arial Black", Arial, sans-serif' }}>FILM</span>
-            <span style={{ color: '#ff1a1a', fontSize: 9.5, fontWeight: 900, letterSpacing: '0.05em', fontFamily: '"Arial Black", Arial, sans-serif' }}>ILEB</span>
-            <span style={{ color: '#ffffff', fontSize: 9.5, fontWeight: 900, letterSpacing: '0.05em', fontFamily: '"Arial Black", Arial, sans-serif' }}>LUO</span>
+            <span style={{ color: '#ff1a1a', fontSize: 9.5, fontWeight: 900, letterSpacing: '0.05em', fontFamily: '"Arial Black", Arial, sans-serif' }}>LUO</span>
+            <span style={{ color: '#ffffff', fontSize: 9.5, fontWeight: 900, letterSpacing: '0.05em', fontFamily: '"Arial Black", Arial, sans-serif' }}>STREAM</span>
           </div>
         </div>
       </Link>

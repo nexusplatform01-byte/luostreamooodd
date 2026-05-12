@@ -109,7 +109,7 @@ export default function Home() {
           ))}
         </div>
         <div style={{ fontSize: 11, color: '#333', fontFamily: 'Arial, sans-serif' }}>
-          © 2025 FILM ILEB LUO — ALL RIGHTS RESERVED
+          © 2025 LUO STREAM — ALL RIGHTS RESERVED
         </div>
       </div>
     </div>

@@ -21,8 +21,8 @@ export type AppUser = {
 };
 
 const DEFAULT_SITE: SiteSettingsDoc = {
-  name: 'FILM ILEB LUO', tagline: 'STREAM EVERYTHING', logo: '',
-  primaryColor: '#e50914', footerText: '© 2025 FILM ILEB LUO. ALL RIGHTS RESERVED.',
+  name: 'LUO STREAM', tagline: 'LUO TRANSLATED MOVIES — DOWNLOAD AND STREAM', logo: '',
+  primaryColor: '#e50914', footerText: '© 2025 LUO STREAM. ALL RIGHTS RESERVED.',
   maintenance: false,
   notifications: { emailNewUser: true, emailNewSub: true, emailWithdrawal: true, smsAlerts: false },
 };
@@ -64,7 +64,7 @@ function fbUserToApp(fb: FBUser, doc?: UserDoc | null): AppUser {
 }
 
 function applySiteToDocument(site: SiteSettingsDoc) {
-  document.title = site.name || 'FILM ILEB LUO';
+  document.title = site.name || 'LUO STREAM';
   const root = document.documentElement;
   root.style.setProperty('--primary-color', site.primaryColor || '#e50914');
   if (site.logo) {

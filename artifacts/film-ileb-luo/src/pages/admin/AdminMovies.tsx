@@ -3,7 +3,7 @@ import { subscribeContent, addContent, updateContent, deleteContent, ContentDoc 
 import { uploadFile, getStoragePath } from '../../lib/storage';
 import { PlusIcon, EditIcon, TrashIcon, UploadIcon } from '../../components/Icons';
 
-const CATEGORIES = ['drama','anime','movies','variety','short','kids','vip','documentary','sports','culture'];
+const CATEGORIES = ['drama','anime','movies','variety','short','kids','vip','documentary','sports','culture','live','games','learning','knowledge','new-films','health','charity','accessible','action','romance','comedy','thriller','horror','sci-fi','fantasy','crime','family','historical','music','food','travel'];
 const BADGES = ['FREE NOW','EXCLUSIVE','HOT CHART TOP','VIP','NEW ARRIVAL','PREMIERE','UPDATED NEW'];
 const HOME_SECTIONS = [
   { value: '', label: '— NONE —' },

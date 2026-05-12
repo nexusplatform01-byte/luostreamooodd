@@ -60,8 +60,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div style={{ padding: collapsed ? '14px 12px' : '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
         {!collapsed && (
           <div style={{ fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 12, fontWeight: 900, letterSpacing: 1, whiteSpace: 'nowrap' }}>
-            <span style={{ color: '#e50914' }}>FILM ILEB</span>
-            <span style={{ color: '#fff' }}> LUO</span>
+            <span style={{ color: '#e50914' }}>LUO</span>
+            <span style={{ color: '#fff' }}> STREAM</span>
           </div>
         )}
         <button onClick={() => { setCollapsed(!collapsed); setMobileOpen(false); }}
@@ -150,7 +150,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </svg>
           </button>
           <div style={{ fontFamily: 'Arial Black, Arial, sans-serif', fontSize: 13, fontWeight: 900, letterSpacing: 1 }}>
-            <span style={{ color: '#e50914' }}>FILM ILEB</span><span style={{ color: '#fff' }}> ADMIN</span>
+            <span style={{ color: '#e50914' }}>LUO STREAM</span><span style={{ color: '#fff' }}> ADMIN</span>
           </div>
           <Link href="/" style={{ marginLeft: 'auto', color: '#444', textDecoration: 'none', fontSize: 11, letterSpacing: 0.8, fontFamily: 'Arial, sans-serif' }}>← SITE</Link>
         </div>

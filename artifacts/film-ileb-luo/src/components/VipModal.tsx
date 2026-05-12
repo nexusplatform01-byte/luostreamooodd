@@ -129,7 +129,7 @@ export default function VipModal() {
       const result = await apiDeposit(
         formatted,
         selectedPlan.price,
-        `FILM ILEB LUO — ${selectedPlan.name} VIP`,
+        `LUO STREAM — ${selectedPlan.name} VIP`,
       );
 
       if (!result.success && !result.internal_reference) {

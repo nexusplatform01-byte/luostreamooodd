@@ -356,8 +356,8 @@ export async function deleteCarousel(id: string) {
 // ── Site settings ───────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS: SiteSettingsDoc = {
-  name: 'FILM ILEB LUO', tagline: 'STREAM EVERYTHING', logo: '',
-  primaryColor: '#e50914', footerText: '© 2025 FILM ILEB LUO. ALL RIGHTS RESERVED.',
+  name: 'LUO STREAM', tagline: 'LUO TRANSLATED MOVIES — DOWNLOAD AND STREAM', logo: '',
+  primaryColor: '#e50914', footerText: '© 2025 LUO STREAM. ALL RIGHTS RESERVED.',
   maintenance: false,
   notifications: { emailNewUser: true, emailNewSub: true, emailWithdrawal: true, smsAlerts: false },
 };
@@ -374,9 +374,11 @@ export async function saveSiteSettings(data: SiteSettingsDoc) {
 // ── SEO settings ────────────────────────────────────────────────────────────
 
 const DEFAULT_SEO: SeoDoc = {
-  title: 'FILM ILEB LUO — STREAM EVERYTHING', description: 'Watch thousands of movies, TV dramas, anime, and more.',
-  keywords: 'streaming, movies, TV drama, anime, VIP, 4K, film, series',
-  ogTitle: 'FILM ILEB LUO', ogDescription: 'Premium video streaming platform.',
+  title: 'LUO STREAM — Luo Translated Movies, Download & Stream',
+  description: 'Watch and download Luo translated movies, TV dramas, anime, K-dramas, action films, romance, comedy, horror, documentaries, short dramas, variety shows, kids content, sports, and live channels — all dubbed or subtitled in Luo. Stream in HD & 4K. No ads for VIP members.',
+  keywords: 'luo stream, luo translated movies, luo dubbed films, luo subtitles, stream luo movies, download luo movies, luo drama, luo anime, luo action movies, luo romance, luo comedy, luo horror, luo documentary, luo kids, luo sports, luo live tv, luo variety shows, luo short drama, luo series, VIP streaming, 4K streaming Uganda, African streaming platform',
+  ogTitle: 'LUO STREAM — Luo Translated Movies, Download & Stream',
+  ogDescription: 'The #1 platform for Luo translated movies and TV shows. Watch dramas, anime, action, romance, comedy, horror, documentaries and more — all in Luo. Stream or download in HD & 4K.',
   ogImage: '', canonical: 'https://film-ileb-luo.replit.app', robots: 'index, follow',
   twitterCard: 'summary_large_image', gaId: '', gtmId: '', pixelId: '',
   sitemapFrequency: 'weekly', sitemapPriority: '0.8',
