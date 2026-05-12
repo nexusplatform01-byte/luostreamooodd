@@ -316,6 +316,10 @@ export async function addTransaction(data: Omit<TransactionDoc, 'id'>): Promise<
   return ref.id;
 }
 
+export async function deleteTransaction(id: string) {
+  await deleteDoc(doc(db, 'transactions', id));
+}
+
 // ── Carousel operations ──────────────────────────────────────────────────────
 
 export async function getCarousel(): Promise<CarouselDoc[]> {

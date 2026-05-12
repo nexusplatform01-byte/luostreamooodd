@@ -5,7 +5,7 @@ import {
 } from 'firebase/auth';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth, googleProvider } from '../lib/firebase';
-import { getUser, setUser, getUserByPhone, UserDoc } from '../lib/db';
+import { getUser, setUser, getUserByPhone, UserDoc, getSiteSettings, SiteSettingsDoc } from '../lib/db';
 
 export const ADMIN_EMAILS = ['mainplatform.nexus@gmail.com', 'panzersonic@gmail.com'];
 
@@ -20,6 +20,13 @@ export type AppUser = {
   vipExpiry?: string;
 };
 
+const DEFAULT_SITE: SiteSettingsDoc = {
+  name: 'FILM ILEB LUO', tagline: 'STREAM EVERYTHING', logo: '',
+  primaryColor: '#e50914', footerText: '© 2025 FILM ILEB LUO. ALL RIGHTS RESERVED.',
+  maintenance: false,
+  notifications: { emailNewUser: true, emailNewSub: true, emailWithdrawal: true, smsAlerts: false },
+};
+
 type AppContextType = {
   user: AppUser | null;
   isLoggedIn: boolean;
@@ -27,6 +34,8 @@ type AppContextType = {
   loginModalOpen: boolean;
   loginTab: 'login' | 'register';
   vipModalOpen: boolean;
+  siteSettings: SiteSettingsDoc;
+  setSiteSettings: (s: SiteSettingsDoc) => void;
   openLogin: (tab?: 'login' | 'register') => void;
   closeLogin: () => void;
   openVip: () => void;
@@ -54,12 +63,31 @@ function fbUserToApp(fb: FBUser, doc?: UserDoc | null): AppUser {
   };
 }
 
+function applySiteToDocument(site: SiteSettingsDoc) {
+  document.title = site.name || 'FILM ILEB LUO';
+  const root = document.documentElement;
+  root.style.setProperty('--primary-color', site.primaryColor || '#e50914');
+  if (site.logo) {
+    let link = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+    if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+    link.href = site.logo;
+  }
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setAppUser] = useState<AppUser | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [loginModalOpen, setLoginModalOpen] = useState(false);
   const [loginTab, setLoginTab] = useState<'login' | 'register'>('login');
   const [vipModalOpen, setVipModalOpen] = useState(false);
+  const [siteSettings, setSiteSettingsState] = useState<SiteSettingsDoc>(DEFAULT_SITE);
+
+  useEffect(() => {
+    getSiteSettings().then(s => {
+      setSiteSettingsState(s);
+      applySiteToDocument(s);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async fb => {
@@ -79,6 +107,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (!fb) return;
     const doc = await getUser(fb.uid);
     setAppUser(fbUserToApp(fb, doc));
+  };
+
+  const setSiteSettings = (s: SiteSettingsDoc) => {
+    setSiteSettingsState(s);
+    applySiteToDocument(s);
   };
 
   const loginWithEmailOrPhone = async (identifier: string, password: string) => {
@@ -133,6 +166,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await signOut(auth);
   };
 
+  if (siteSettings.maintenance && !user?.isAdmin) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0d0d0f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Arial, sans-serif' }}>
+        <div style={{ textAlign: 'center', padding: '40px 32px' }}>
+          <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="#f5a623" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 20 }}>
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          <div style={{ color: '#f5a623', fontSize: 13, fontWeight: 900, letterSpacing: 2, marginBottom: 10 }}>MAINTENANCE MODE</div>
+          <div style={{ color: '#fff', fontSize: 22, fontWeight: 900, letterSpacing: 1, fontFamily: 'Arial Black, Arial, sans-serif', marginBottom: 8 }}>{siteSettings.name}</div>
+          <div style={{ color: '#555', fontSize: 12, letterSpacing: 1, marginBottom: 24 }}>We're making improvements. We'll be back shortly.</div>
+          <div style={{ color: '#333', fontSize: 10, letterSpacing: 0.8 }}>{siteSettings.tagline}</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AppContext.Provider value={{
       user,
@@ -141,6 +190,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       loginModalOpen,
       loginTab,
       vipModalOpen,
+      siteSettings,
+      setSiteSettings,
       openLogin: (tab = 'login') => { setLoginTab(tab); setLoginModalOpen(true); },
       closeLogin: () => setLoginModalOpen(false),
       openVip: () => setVipModalOpen(true),

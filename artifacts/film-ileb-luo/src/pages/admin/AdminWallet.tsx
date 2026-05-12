@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { getTransactions, addTransaction, TransactionDoc } from '../../lib/db';
+import { getTransactions, addTransaction, deleteTransaction, TransactionDoc } from '../../lib/db';
 import { Timestamp } from 'firebase/firestore';
 import {
   apiWithdraw, apiPollStatus, apiGetTransactions,
   formatUgPhone, isPaymentSuccess, isPaymentFailed, WITHDRAW_FEE,
 } from '../../lib/payment';
-import { DollarIcon, ArrowUpIcon, CheckIcon, AlertIcon, RefreshIcon } from '../../components/Icons';
+import { DollarIcon, ArrowUpIcon, CheckIcon, AlertIcon, RefreshIcon, TrashIcon } from '../../components/Icons';
 
 type WStep = 'idle' | 'form' | 'processing' | 'done' | 'error';
 
@@ -19,6 +19,8 @@ export default function AdminWallet() {
   const [gatewayLoading, setGatewayLoading] = useState(false);
   const [txTab, setTxTab] = useState<'local' | 'gateway'>('local');
   const [filter, setFilter] = useState<'all' | 'subscription' | 'withdrawal'>('all');
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Withdraw state
   const [wStep, setWStep] = useState<WStep>('idle');
@@ -154,6 +156,17 @@ export default function AdminWallet() {
     setWError('');
     setWStatusMsg('');
     setWResultMsg('');
+  };
+
+  const handleDeleteTx = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteTransaction(id);
+      setTxs(prev => prev.filter(t => t.id !== id));
+    } catch { /* ignore */ } finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
   };
 
   const filtered = txs.filter(t => {
@@ -300,7 +313,7 @@ export default function AdminWallet() {
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr>{['TYPE', 'DESCRIPTION', 'AMOUNT', 'PHONE', 'DATE', 'STATUS'].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
+                  <tr>{['TYPE', 'DESCRIPTION', 'AMOUNT', 'PHONE', 'DATE', 'STATUS', ''].map(h => <th key={h} style={thStyle}>{h}</th>)}</tr>
                 </thead>
                 <tbody>
                   {filtered.map(t => (
@@ -328,6 +341,27 @@ export default function AdminWallet() {
                           {t.status === 'completed' ? <CheckIcon size={12} color="#22c55e" /> : <AlertIcon size={12} color="#f5a623" />}
                           <span style={{ color: t.status === 'completed' ? '#22c55e' : '#f5a623', fontSize: 9, fontWeight: 700, letterSpacing: 1 }}>{t.status.toUpperCase()}</span>
                         </div>
+                      </td>
+                      <td style={{ ...tdStyle, textAlign: 'right' }}>
+                        {confirmDeleteId === t.id ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button onClick={() => handleDeleteTx(t.id!)} disabled={deletingId === t.id}
+                              style={{ background: '#e50914', border: 'none', borderRadius: 5, color: '#fff', padding: '4px 8px', fontSize: 9, fontWeight: 700, letterSpacing: 1, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>
+                              {deletingId === t.id ? '...' : 'YES'}
+                            </button>
+                            <button onClick={() => setConfirmDeleteId(null)}
+                              style={{ background: '#222', border: 'none', borderRadius: 5, color: '#666', padding: '4px 8px', fontSize: 9, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>
+                              NO
+                            </button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setConfirmDeleteId(t.id!)}
+                            style={{ background: 'none', border: 'none', color: '#333', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', borderRadius: 6, transition: 'color 0.15s' }}
+                            onMouseEnter={e => (e.currentTarget.style.color = '#e50914')}
+                            onMouseLeave={e => (e.currentTarget.style.color = '#333')}>
+                            <TrashIcon size={13} color="currentColor" />
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

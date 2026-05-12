@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { getSiteSettings, saveSiteSettings, SiteSettingsDoc } from '../../lib/db';
+import { useApp } from '../../context/AppContext';
 import { SettingsIcon, CheckIcon, BellIcon, ShieldIcon } from '../../components/Icons';
 
 export default function AdminSettings() {
+  const { setSiteSettings: applyToApp } = useApp();
   const [site, setSite] = useState<SiteSettingsDoc | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -15,6 +17,7 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       await saveSiteSettings(site);
+      applyToApp(site);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally { setSaving(false); }
@@ -37,6 +40,11 @@ export default function AdminSettings() {
         </button>
       </div>
 
+      <div style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+        <CheckIcon size={13} color="#22c55e" />
+        <span style={{ color: '#666', fontSize: 11 }}>Changes take effect across the entire site the moment you save — site name updates the browser tab, primary colour updates the theme, and maintenance mode locks the site for non-admins.</span>
+      </div>
+
       <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid rgba(255,255,255,0.06)', marginBottom: 28 }}>
         {([['general','GENERAL'], ['notifications','NOTIFICATIONS'], ['security','SECURITY']] as const).map(([t, l]) => (
           <button key={t} onClick={() => setTab(t)} style={{ background: 'none', border: 'none', color: tab === t ? '#e50914' : '#555', fontFamily: 'Arial, sans-serif', fontWeight: 700, fontSize: 11, letterSpacing: 1.5, padding: '10px 24px 12px', cursor: 'pointer', borderBottom: tab === t ? '2px solid #e50914' : '2px solid transparent', marginBottom: -1 }}>
@@ -52,18 +60,43 @@ export default function AdminSettings() {
             <h3 style={sectionTitle}>SITE INFORMATION</h3>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            <div><label style={labelStyle}>SITE NAME</label><input style={inputStyle} value={site.name} onChange={e => setSiteField('name', e.target.value.toUpperCase())} /></div>
-            <div><label style={labelStyle}>TAGLINE</label><input style={inputStyle} value={site.tagline} onChange={e => setSiteField('tagline', e.target.value.toUpperCase())} /></div>
-            <div><label style={labelStyle}>LOGO URL</label><input style={inputStyle} placeholder="HTTPS://..." value={site.logo} onChange={e => setSiteField('logo', e.target.value)} /></div>
-            <div><label style={labelStyle}>PRIMARY COLOR</label><div style={{ display: 'flex', gap: 8, alignItems: 'center' }}><input style={inputStyle} value={site.primaryColor} onChange={e => setSiteField('primaryColor', e.target.value)} /><input type="color" value={site.primaryColor} onChange={e => setSiteField('primaryColor', e.target.value)} style={{ width: 42, height: 42, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent' }} /></div></div>
-            <div style={{ gridColumn: '1/-1' }}><label style={labelStyle}>FOOTER TEXT</label><input style={inputStyle} value={site.footerText} onChange={e => setSiteField('footerText', e.target.value)} /></div>
+            <div>
+              <label style={labelStyle}>SITE NAME — updates browser tab & page title</label>
+              <input style={inputStyle} value={site.name} onChange={e => setSiteField('name', e.target.value.toUpperCase())} />
+            </div>
+            <div>
+              <label style={labelStyle}>TAGLINE — shown on maintenance page</label>
+              <input style={inputStyle} value={site.tagline} onChange={e => setSiteField('tagline', e.target.value.toUpperCase())} />
+            </div>
+            <div>
+              <label style={labelStyle}>LOGO URL — used as favicon & logo</label>
+              <input style={inputStyle} placeholder="HTTPS://..." value={site.logo} onChange={e => setSiteField('logo', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>PRIMARY COLOR — theme accent color</label>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <input style={inputStyle} value={site.primaryColor} onChange={e => setSiteField('primaryColor', e.target.value)} />
+                <input type="color" value={site.primaryColor} onChange={e => setSiteField('primaryColor', e.target.value)} style={{ width: 42, height: 42, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent' }} />
+              </div>
+            </div>
+            <div style={{ gridColumn: '1/-1' }}>
+              <label style={labelStyle}>FOOTER TEXT</label>
+              <input style={inputStyle} value={site.footerText} onChange={e => setSiteField('footerText', e.target.value)} />
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, padding: '14px 16px', background: '#111', borderRadius: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 16, padding: '14px 16px', background: site.maintenance ? 'rgba(245,166,35,0.08)' : '#111', border: site.maintenance ? '1px solid rgba(245,166,35,0.3)' : '1px solid transparent', borderRadius: 10 }}>
             <input type="checkbox" id="maint" checked={site.maintenance} onChange={e => setSiteField('maintenance', e.target.checked)} />
             <label htmlFor="maint" style={{ color: site.maintenance ? '#f5a623' : '#666', fontSize: 11, letterSpacing: 1, cursor: 'pointer', fontWeight: site.maintenance ? 700 : 400 }}>
-              MAINTENANCE MODE {site.maintenance ? '— SITE IS CURRENTLY OFFLINE FOR USERS' : ''}
+              MAINTENANCE MODE {site.maintenance ? '— SITE WILL BE OFFLINE FOR NON-ADMIN USERS AFTER SAVING' : '— ENABLE TO TAKE SITE OFFLINE FOR USERS'}
             </label>
           </div>
+
+          {site.logo && (
+            <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#111', borderRadius: 10 }}>
+              <img src={site.logo} alt="logo preview" style={{ width: 32, height: 32, objectFit: 'contain', borderRadius: 6 }} onError={e => (e.currentTarget.style.display = 'none')} />
+              <span style={{ color: '#555', fontSize: 10, letterSpacing: 0.8 }}>LOGO PREVIEW</span>
+            </div>
+          )}
         </div>
       )}
 
