@@ -65,7 +65,6 @@ export default function PlayPage() {
             if (eps.length) setActiveEp(eps[0]);
             setTab('episodes');
           }
-          // load recommended
           const all = await getAllContent().catch(() => [] as ContentDoc[]);
           const recs = all.filter(x => x.id !== id && (x.category === c.category || x.type === c.type)).slice(0, 12);
           setRecommended(recs.map(contentToCard));
@@ -78,8 +77,20 @@ export default function PlayPage() {
 
   const currentVideo = activeEp?.videoUrl || content?.videoUrl || '';
   const currentTitle = activeEp ? `EP ${activeEp.episodeNumber}: ${activeEp.title}` : content?.title || '';
-  const isVipRequired = activeEp ? !activeEp.isFree : false;
+  // For series: gate per-episode isFree flag. For movies: always require VIP.
+  const isVipRequired = activeEp ? !activeEp.isFree : true;
   const canWatch = !isVipRequired || user?.isVip;
+
+  const handleDownload = () => {
+    if (!user?.isVip) { openVip(); return; }
+    if (currentVideo) window.open(currentVideo, '_blank');
+  };
+
+  const handleShare = () => {
+    navigator.share?.({ title: content?.title || '', url: window.location.href }).catch(() => {
+      navigator.clipboard?.writeText(window.location.href).catch(() => {});
+    });
+  };
 
   const sortedEpisodes = epSort === 'asc' ? [...episodes] : [...episodes].reverse();
 
@@ -98,7 +109,7 @@ export default function PlayPage() {
           {content?.thumbnail && <img src={content.thumbnail} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15 }} alt="" />}
           <div style={{ position: 'relative', textAlign: 'center' }}>
             <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif', marginBottom: 6 }}>VIP CONTENT</div>
-            <div style={{ color: '#888', fontSize: 11, letterSpacing: 0.8, fontFamily: 'Arial, sans-serif', marginBottom: 16 }}>SUBSCRIBE TO WATCH THIS EPISODE</div>
+            <div style={{ color: '#888', fontSize: 11, letterSpacing: 0.8, fontFamily: 'Arial, sans-serif', marginBottom: 16 }}>SUBSCRIBE TO WATCH THIS CONTENT</div>
             <button onClick={openVip} style={{ background: 'linear-gradient(135deg,#f5a623,#e08a00)', border: 'none', borderRadius: 8, color: '#fff', padding: '10px 24px', fontSize: 12, fontWeight: 700, letterSpacing: 1.5, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>
               GET VIP
             </button>
@@ -140,10 +151,16 @@ export default function PlayPage() {
 
   const isSeries = content.type === 'series';
 
+  const actionBtn = (label: string, icon: React.ReactNode, onClick: () => void, active?: boolean, activeColor?: string) => (
+    <button onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 14px', background: active ? `rgba(${activeColor || '229,9,20'},0.15)` : '#1a1a1a', border: `1px solid ${active ? `rgba(${activeColor || '229,9,20'},0.6)` : '#2a2a2a'}`, borderRadius: 20, color: active ? `rgb(${activeColor || '229,9,20'})` : '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'Arial, sans-serif', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+      {icon}
+      {label}
+    </button>
+  );
+
   /* ── MOBILE LAYOUT ── */
   const mobileLayout = (
     <div className="play-mobile-layout" style={{ background: '#0d0d0d', minHeight: '100vh', color: '#e0e0e0', fontFamily: 'Arial, sans-serif' }}>
-      {/* Breadcrumb */}
       <div style={{ padding: '7px 12px', fontSize: 11, color: '#555', display: 'flex', gap: 5, alignItems: 'center', borderBottom: '1px solid #1a1a1a' }}>
         <span onClick={() => navigate('/')} style={{ color: '#555', cursor: 'pointer' }}>HOME</span>
         <span>›</span>
@@ -152,29 +169,32 @@ export default function PlayPage() {
         <span style={{ color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 120 }}>{content.title}</span>
       </div>
 
-      {/* Video player — full width, black bg, portrait poster centered */}
       <div style={{ width: '100%', background: '#000', position: 'relative' }}>
         {renderPlayer()}
       </div>
 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: 6, padding: '10px 10px 8px', overflowX: 'auto', scrollbarWidth: 'none', borderBottom: '1px solid #1a1a1a' }}>
-        <button onClick={() => setIsLiked(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: isLiked ? 'rgba(229,9,20,0.15)' : '#1a1a1a', border: `1px solid ${isLiked ? '#e50914' : '#2a2a2a'}`, borderRadius: 20, color: isLiked ? '#e50914' : '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'Arial, sans-serif', whiteSpace: 'nowrap' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={isLiked ? '#e50914' : 'none'} stroke={isLiked ? '#e50914' : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
-          LIKE {likeCount + (isLiked ? 1 : 0)}
-        </button>
-        <button onClick={() => setIsSaved(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: isSaved ? 'rgba(229,9,20,0.15)' : '#1a1a1a', border: `1px solid ${isSaved ? '#e50914' : '#2a2a2a'}`, borderRadius: 20, color: isSaved ? '#e50914' : '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'Arial, sans-serif', whiteSpace: 'nowrap' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill={isSaved ? '#e50914' : 'none'} stroke={isSaved ? '#e50914' : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-          SAVE {saveCount + (isSaved ? 1 : 0)}
-        </button>
-        <button onClick={() => navigator.share?.({ title: content.title, url: window.location.href }).catch(() => {})} style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, color: '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'Arial, sans-serif' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-          SHARE
-        </button>
-        <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, color: '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'Arial, sans-serif' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          DOWNLOAD
-        </button>
+        {actionBtn(
+          `LIKE ${likeCount + (isLiked ? 1 : 0)}`,
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={isLiked ? '#e50914' : 'none'} stroke={isLiked ? '#e50914' : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3z"/><path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>,
+          () => setIsLiked(v => !v), isLiked
+        )}
+        {actionBtn(
+          `SAVE ${saveCount + (isSaved ? 1 : 0)}`,
+          <svg width="14" height="14" viewBox="0 0 24 24" fill={isSaved ? '#e50914' : 'none'} stroke={isSaved ? '#e50914' : '#aaa'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>,
+          () => setIsSaved(v => !v), isSaved
+        )}
+        {actionBtn(
+          'SHARE',
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+          handleShare
+        )}
+        {actionBtn(
+          'DOWNLOAD',
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+          handleDownload
+        )}
         <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '7px 12px', background: 'linear-gradient(135deg,#6c63ff,#4a43cc)', border: 'none', borderRadius: 20, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'Arial, sans-serif', whiteSpace: 'nowrap' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           OPEN IN APP
@@ -290,6 +310,7 @@ export default function PlayPage() {
 
       <div style={{ display: 'flex', gap: 0, alignItems: 'flex-start' }}>
         <div style={{ flex: 1, minWidth: 0 }}>
+          {/* Player */}
           <div style={{ position: 'relative', background: '#000', width: '100%', maxHeight: 540, overflow: 'hidden' }}>
             {renderPlayer()}
             {canWatch && currentVideo && (
@@ -298,6 +319,34 @@ export default function PlayPage() {
                 {content.badge && <span style={{ background: '#e50914', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 2 }}>{content.badge}</span>}
               </div>
             )}
+          </div>
+
+          {/* Desktop action buttons under player */}
+          <div style={{ background: '#111', borderBottom: '1px solid #1e1e1e', padding: '10px 16px', display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              onClick={() => setIsLiked(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: isLiked ? 'rgba(229,9,20,0.15)' : '#1a1a1a', border: `1px solid ${isLiked ? '#e50914' : '#2a2a2a'}`, borderRadius: 20, color: isLiked ? '#e50914' : '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif', transition: 'all 0.15s' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isLiked ? '#e50914' : 'none'} stroke={isLiked ? '#e50914' : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+              LIKE {likeCount + (isLiked ? 1 : 0)}
+            </button>
+            <button
+              onClick={() => setIsSaved(v => !v)}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: isSaved ? 'rgba(229,9,20,0.15)' : '#1a1a1a', border: `1px solid ${isSaved ? '#e50914' : '#2a2a2a'}`, borderRadius: 20, color: isSaved ? '#e50914' : '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif', transition: 'all 0.15s' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill={isSaved ? '#e50914' : 'none'} stroke={isSaved ? '#e50914' : 'currentColor'} strokeWidth="2" strokeLinecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+              SAVE {saveCount + (isSaved ? 1 : 0)}
+            </button>
+            <button
+              onClick={handleShare}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, color: '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif', transition: 'all 0.15s' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              SHARE
+            </button>
+            <button
+              onClick={handleDownload}
+              style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 16px', background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 20, color: '#aaa', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'Arial, sans-serif', transition: 'all 0.15s' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              DOWNLOAD {!user?.isVip && <span style={{ fontSize: 9, color: '#f5a623', marginLeft: 3 }}>VIP</span>}
+            </button>
           </div>
 
           {content.type === 'series' && episodes.length > 0 && (
@@ -340,17 +389,40 @@ export default function PlayPage() {
                   </div>
                 )}
                 {content.description && <div style={{ fontSize: 11, color: '#777', lineHeight: 1.6, marginBottom: 12 }}>{content.description}</div>}
-                <div style={{ display: 'flex', gap: 16, paddingBottom: 12, borderBottom: '1px solid #1e1e1e' }}>
-                  <button onClick={() => setIsLiked(!isLiked)} style={{ background: 'transparent', border: 'none', color: isLiked ? '#e50914' : '#888', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill={isLiked ? '#e50914' : 'none'} stroke={isLiked ? '#e50914' : '#888'} strokeWidth="2" strokeLinecap="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                    <span style={{ fontSize: 9, color: isLiked ? '#e50914' : '#666' }}>LIKE</span>
-                  </button>
-                  <button onClick={() => navigator.share?.({ title: content.title, url: window.location.href }).catch(() => {})} style={{ background: 'transparent', border: 'none', color: '#888', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v13"/></svg>
-                    <span style={{ fontSize: 9, color: '#666' }}>SHARE</span>
-                  </button>
-                </div>
+
+                {/* VIP upsell banner in sidebar if not subscribed */}
+                {!user?.isVip && (
+                  <div style={{ background: 'linear-gradient(135deg,rgba(245,166,35,0.1),rgba(229,9,20,0.1))', border: '1px solid rgba(245,166,35,0.3)', borderRadius: 10, padding: '12px 14px', marginBottom: 12, textAlign: 'center' }}>
+                    <div style={{ color: '#f5a623', fontSize: 11, fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>VIP REQUIRED</div>
+                    <div style={{ color: '#888', fontSize: 10, marginBottom: 10 }}>Subscribe to watch & download</div>
+                    <button onClick={openVip} style={{ background: 'linear-gradient(135deg,#f5a623,#e08a00)', border: 'none', borderRadius: 6, color: '#fff', padding: '7px 18px', fontSize: 11, fontWeight: 700, letterSpacing: 1, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>
+                      GET VIP NOW
+                    </button>
+                  </div>
+                )}
               </div>
+
+              {/* Recommended in sidebar */}
+              {recommended.length > 0 && (
+                <div style={{ padding: '0 0 12px' }}>
+                  <div style={{ padding: '8px 14px', fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, borderTop: '1px solid #1e1e1e' }}>UP NEXT</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+                    {recommended.slice(0, 6).map(card => (
+                      <Link key={card.id} href={`/play/${card.id}`}>
+                        <div style={{ display: 'flex', gap: 10, padding: '8px 14px', cursor: 'pointer', transition: 'background 0.15s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = '#161616')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                          <img src={card.image} alt={card.title} style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: 4, flexShrink: 0, background: '#1a1a1a' }} />
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 11, fontWeight: 700, color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 3 }}>{card.title}</div>
+                            <div style={{ fontSize: 10, color: '#555' }}>{card.episodeText}</div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ padding: 20, textAlign: 'center' }}>
