@@ -271,10 +271,9 @@ html, body {
 .swiper_political_img_QmWai img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
   object-position: center center;
   display: block;
-  background: #000;
 }
 
 .img_top_shadow_1Jl5Y {
