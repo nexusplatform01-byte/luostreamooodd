@@ -1,0 +1,66 @@
+Deployment Details
+Build Failed
+Command "pnpm install --frozen-lockfile && pnpm --filter @workspace/film-ileb-luo run build" exited with 1
+Created
+github/nexusplatform01-byte
+nexusplatform01-byte
+Just now
+Status
+Error
+Latest
+Duration
+28s
+Just now
+Environment
+Production
+Domains
+luostream-git-main-nexusplatform01-8037s-projects.vercel.app
+luostream-ks8snja8c-nexusplatform01-8037s-projects.vercel.app
+Source
+main
+16fa51b
+Initial commit
+
+Deployment Settings
+3 Recommendations
+Build Logs
+28s
+85 lines
+Find in logs
+CtrlF
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+Done in 2.2s using pnpm v10.28.0
+> @workspace/film-ileb-luo@0.0.0 build /vercel/path0/artifacts/film-ileb-luo
+> vite build --config vite.config.ts
+failed to load config from /vercel/path0/artifacts/film-ileb-luo/vite.config.ts
+error during build:
+Error: PORT environment variable is required but was not provided.
+    at file:///vercel/path0/artifacts/film-ileb-luo/node_modules/.vite-temp/vite.config.ts.timestamp-1778239248640-07d6d651789498.mjs:10:9
+    at ModuleJob.run (node:internal/modules/esm/module_job:430:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:661:26)
+    at async loadConfigFromBundledFile (file:///vercel/path0/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:35920:12)
+    at async bundleAndLoadConfigFile (file:///vercel/path0/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:35808:17)
+    at async loadConfigFromFile (file:///vercel/path0/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:35775:42)
+    at async resolveConfig (file:///vercel/path0/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:35424:22)
+    at async createBuilder (file:///vercel/path0/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/chunks/config.js:33879:19)
+    at async CAC.<anonymous> (file:///vercel/path0/node_modules/.pnpm/vite@7.3.2_@types+node@25.3.5_jiti@2.6.1_lightningcss@1.31.1_tsx@4.21.0_yaml@2.8.2/node_modules/vite/dist/node/cli.js:629:10)
+/vercel/path0/artifacts/film-ileb-luo:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/film-ileb-luo@0.0.0 build: `vite build --config vite.config.ts`
+Exit status 1
+Error: Command "pnpm install --frozen-lockfile && pnpm --filter @workspace/film-ileb-luo run build" exited with 1
+Deployment Summary
+Deployment Checks
+Assigning Custom Domains
+Runtime Logs
+
+View and debug runtime logs & errors
+
+Observability
+
+Monitor app health & performance
+
+Speed Insights
+
+Not Enabled
+Performance metrics from real user
