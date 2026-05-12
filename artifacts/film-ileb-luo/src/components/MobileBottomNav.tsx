@@ -56,15 +56,10 @@ const NAV_ITEMS = [
 
 const MORE_ITEMS = [
   { label: 'ANIME', path: '/anime' },
-  { label: 'VARIETY', path: '/variety' },
-  { label: 'SHORT DRAMA', path: '/short' },
+  { label: 'SHORT', path: '/short' },
   { label: 'KIDS', path: '/kids' },
-  { label: 'DOCUMENTARY', path: '/documentary' },
   { label: 'SPORTS', path: '/sports' },
-  { label: 'CULTURE', path: '/culture' },
   { label: 'LIVE', path: '/live' },
-  { label: 'LEARNING', path: '/learning' },
-  { label: 'HEALTH', path: '/health' },
 ];
 
 export default function MobileBottomNav() {
