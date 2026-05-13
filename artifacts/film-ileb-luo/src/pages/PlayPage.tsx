@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'wouter';
 import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { ContentDoc, EpisodeDoc, addToHistory, getAllContent } from '../lib/db';
+import { ContentDoc, EpisodeDoc, addToHistory, addToHistoryDb, getAllContent } from '../lib/db';
 import { useApp } from '../context/AppContext';
 import MuxPlayer from '@mux/mux-player-react';
 import VideoCard from '../components/VideoCard';
@@ -57,7 +57,9 @@ export default function PlayPage() {
           const c = { id: snap.id, ...snap.data() } as ContentDoc;
           setContent(c);
           updateDoc(doc(db, 'content', id), { views: increment(1) }).catch(() => {});
-          addToHistory({ contentId: c.id!, title: c.title, thumbnail: c.thumbnail, watchedAt: Date.now() });
+          const historyItem = { contentId: c.id!, title: c.title, thumbnail: c.thumbnail, watchedAt: Date.now() };
+          addToHistory(historyItem);
+          if (user?.uid) addToHistoryDb(user.uid, historyItem);
           if (c.type === 'series') {
             const epSnap = await getDocs(query(collection(db, 'episodes'), where('seriesId', '==', id), orderBy('episodeNumber', 'asc')));
             const eps = epSnap.docs.map(d => ({ id: d.id, ...d.data() } as EpisodeDoc));

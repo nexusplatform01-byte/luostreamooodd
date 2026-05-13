@@ -1,5 +1,5 @@
 const API = 'https://function-bun-production-b22d.up.railway.app';
-const WITHDRAW_FEE = 5000;
+const WITHDRAW_FEE = 2500;
 
 export { WITHDRAW_FEE };
 

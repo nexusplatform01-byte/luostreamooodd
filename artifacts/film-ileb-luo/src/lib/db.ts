@@ -428,3 +428,32 @@ export function getHistory(): WatchHistoryDoc[] {
 export function clearHistory() {
   try { localStorage.removeItem(HISTORY_KEY); } catch {}
 }
+
+// ── Watch history (Firestore — per user account) ──────────────────────────
+
+export async function addToHistoryDb(uid: string, item: WatchHistoryDoc) {
+  try {
+    await setDoc(doc(db, 'history', uid, 'items', item.contentId), {
+      ...item,
+      watchedAt: Date.now(),
+    });
+  } catch {}
+}
+
+export async function getHistoryDb(uid: string): Promise<WatchHistoryDoc[]> {
+  try {
+    const snap = await getDocs(
+      query(collection(db, 'history', uid, 'items'), orderBy('watchedAt', 'desc'), limit(50))
+    );
+    return snap.docs.map(d => d.data() as WatchHistoryDoc);
+  } catch { return []; }
+}
+
+export async function clearHistoryDb(uid: string) {
+  try {
+    const snap = await getDocs(collection(db, 'history', uid, 'items'));
+    const batch = writeBatch(db);
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+  } catch {}
+}

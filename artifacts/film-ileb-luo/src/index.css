@@ -915,3 +915,8 @@ html, body {
 @media (max-width: 768px) {
   .category-cards-wrap { padding: 10px 8px 70px !important; }
 }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}

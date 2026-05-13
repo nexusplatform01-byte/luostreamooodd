@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLocation } from 'wouter';
-import { getAllContent, ContentDoc, getHistory, WatchHistoryDoc } from '../lib/db';
+import { getAllContent, ContentDoc, getHistory, getHistoryDb, clearHistory, clearHistoryDb, WatchHistoryDoc } from '../lib/db';
 
 const CATEGORY_LINKS = [
   { label: 'DRAMA', path: '/drama' },
@@ -23,6 +23,7 @@ export default function Header() {
   const [showSearchDrop, setShowSearchDrop] = useState(false);
   const [filterOpen, setFilterOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [appOpen, setAppOpen] = useState(false);
   const [historyItems, setHistoryItems] = useState<WatchHistoryDoc[]>([]);
   const { user, isLoggedIn, openLogin, openVip, logout } = useApp();
@@ -62,9 +63,24 @@ export default function Header() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const openHistory = () => {
-    setHistoryItems(getHistory());
+  const openHistory = async () => {
     setHistoryOpen(true);
+    setHistoryLoading(true);
+    if (user?.uid) {
+      const items = await getHistoryDb(user.uid);
+      setHistoryItems(items);
+    } else {
+      setHistoryItems(getHistory());
+    }
+    setHistoryLoading(false);
+  };
+
+  const handleClearHistory = async () => {
+    if (user?.uid) {
+      await clearHistoryDb(user.uid);
+    }
+    clearHistory();
+    setHistoryItems([]);
   };
 
   const closeAll = () => {
@@ -310,14 +326,30 @@ export default function Header() {
             <div style={{ padding: '20px 20px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, letterSpacing: 1, fontFamily: 'Arial, sans-serif' }}>WATCH HISTORY</div>
-                <div style={{ color: '#444', fontSize: 10, marginTop: 2, letterSpacing: 0.8, fontFamily: 'Arial, sans-serif' }}>{historyItems.length} RECENTLY WATCHED</div>
+                <div style={{ color: '#444', fontSize: 10, marginTop: 2, letterSpacing: 0.8, fontFamily: 'Arial, sans-serif' }}>
+                  {historyLoading ? 'LOADING...' : `${historyItems.length} RECENTLY WATCHED`}
+                </div>
               </div>
-              <button onClick={() => setHistoryOpen(false)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex', padding: 4 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {historyItems.length > 0 && !historyLoading && (
+                  <button onClick={handleClearHistory} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 10, fontFamily: 'Arial, sans-serif', letterSpacing: 0.8, padding: '3px 8px', borderRadius: 4, transition: 'color 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.color = '#e50914')}
+                    onMouseLeave={e => (e.currentTarget.style.color = '#555')}>
+                    CLEAR
+                  </button>
+                )}
+                <button onClick={() => setHistoryOpen(false)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', display: 'flex', padding: 4 }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                </button>
+              </div>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', scrollbarWidth: 'none' }}>
-              {historyItems.length === 0 ? (
+              {historyLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#333', fontFamily: 'Arial, sans-serif' }}>
+                  <div style={{ width: 28, height: 28, border: '2px solid #222', borderTopColor: '#e50914', borderRadius: '50%', animation: 'spin 0.8s linear infinite', marginBottom: 12 }} />
+                  <div style={{ fontSize: 11, letterSpacing: 0.8 }}>LOADING HISTORY...</div>
+                </div>
+              ) : historyItems.length === 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#333', fontFamily: 'Arial, sans-serif' }}>
                   <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#2a2a2a" strokeWidth="1.5" strokeLinecap="round" style={{ marginBottom: 12 }}>
                     <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
