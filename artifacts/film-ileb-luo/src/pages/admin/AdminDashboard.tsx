@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { reauthenticateWithCredential, updatePassword, EmailAuthProvider } from 'firebase/auth';
 import { db, auth } from '../../lib/firebase';
-import { getAdminAuth } from '../../lib/db';
+import { getAdminAuth, getAllUsers, deleteUser, UserDoc } from '../../lib/db';
 import { DollarIcon, UsersIcon, MovieIcon, CrownIcon, ChartIcon, LockIcon, CheckIcon, ShieldIcon } from '../../components/Icons';
 
 type Stats = { users: number; vipUsers: number; content: number; revenue: number };
@@ -130,6 +130,115 @@ function ChangePasswordCard() {
   );
 }
 
+function DeleteUserCard() {
+  const [allUsers, setAllUsers] = useState<UserDoc[]>([]);
+  const [search, setSearch] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [confirmUid, setConfirmUid] = useState<string | null>(null);
+  const [deletingUid, setDeletingUid] = useState<string | null>(null);
+  const [deletedUids, setDeletedUids] = useState<string[]>([]);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getAllUsers().then(u => { setAllUsers(u); setLoadingUsers(false); }).catch(() => setLoadingUsers(false));
+  }, []);
+
+  const filtered = allUsers.filter(u => !deletedUids.includes(u.uid) && (
+    u.name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.email?.toLowerCase().includes(search.toLowerCase()) ||
+    u.phone?.includes(search)
+  )).slice(0, 20);
+
+  const handleDelete = async (uid: string) => {
+    setDeletingUid(uid);
+    setError('');
+    try {
+      await deleteUser(uid);
+      setDeletedUids(p => [...p, uid]);
+      setConfirmUid(null);
+    } catch {
+      setError('FAILED TO DELETE USER. CHECK FIRESTORE PERMISSIONS.');
+    } finally { setDeletingUid(null); }
+  };
+
+  return (
+    <div style={{ background: '#16161a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 14, padding: 24, marginTop: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <div style={{ background: 'rgba(229,9,20,0.12)', borderRadius: 8, padding: 8, display: 'flex' }}>
+          <UsersIcon size={16} color="#e50914" />
+        </div>
+        <div>
+          <h2 style={{ color: '#fff', fontSize: 13, fontWeight: 700, letterSpacing: 1, margin: 0, fontFamily: 'Arial, sans-serif' }}>DELETE USER</h2>
+          <p style={{ color: '#444', fontSize: 10, letterSpacing: 0.8, margin: '3px 0 0', fontFamily: 'Arial, sans-serif' }}>SEARCH AND PERMANENTLY REMOVE A USER ACCOUNT FROM FIRESTORE</p>
+        </div>
+      </div>
+
+      {error && (
+        <div style={{ background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.25)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#e50914', fontSize: 11, letterSpacing: 0.8, fontFamily: 'Arial, sans-serif' }}>{error}</div>
+      )}
+
+      <div style={{ position: 'relative', marginBottom: 16 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#444" strokeWidth="2" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }}>
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          type="text"
+          placeholder="SEARCH BY NAME, EMAIL OR PHONE..."
+          value={search}
+          onChange={e => { setSearch(e.target.value); setConfirmUid(null); }}
+          style={{ width: '100%', padding: '11px 12px 11px 36px', background: '#0d0d0f', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#fff', fontFamily: 'Arial, sans-serif', fontSize: 11, letterSpacing: 0.8, outline: 'none', boxSizing: 'border-box' }}
+        />
+      </div>
+
+      {loadingUsers ? (
+        <div style={{ color: '#333', fontSize: 11, letterSpacing: 1, padding: '16px 0', fontFamily: 'Arial, sans-serif' }}>LOADING USERS...</div>
+      ) : !search.trim() ? (
+        <div style={{ color: '#333', fontSize: 11, letterSpacing: 1, padding: '16px 0', fontFamily: 'Arial, sans-serif' }}>TYPE TO SEARCH FOR A USER</div>
+      ) : filtered.length === 0 ? (
+        <div style={{ color: '#333', fontSize: 11, letterSpacing: 1, padding: '16px 0', fontFamily: 'Arial, sans-serif' }}>NO USERS FOUND</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {filtered.map(u => (
+            <div key={u.uid} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+              <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg,#e50914,#6a0008)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+                {u.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ color: '#fff', fontSize: 12, fontWeight: 700, letterSpacing: 0.5, fontFamily: 'Arial, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.name || '—'}</div>
+                <div style={{ color: '#444', fontSize: 10, marginTop: 2, fontFamily: 'Arial, sans-serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email || u.phone || '—'}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                {u.isVip && <span style={{ background: 'rgba(245,166,35,0.12)', color: '#f5a623', fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: '2px 7px', borderRadius: 4 }}>VIP</span>}
+                {u.isAdmin && <span style={{ background: 'rgba(74,158,255,0.12)', color: '#4a9eff', fontSize: 9, fontWeight: 700, letterSpacing: 1, padding: '2px 7px', borderRadius: 4 }}>ADMIN</span>}
+              </div>
+              {confirmUid === u.uid ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                  <span style={{ color: '#e50914', fontSize: 10, letterSpacing: 0.5, fontFamily: 'Arial, sans-serif' }}>CONFIRM?</span>
+                  <button
+                    onClick={() => handleDelete(u.uid)}
+                    disabled={deletingUid === u.uid}
+                    style={{ background: '#e50914', border: 'none', borderRadius: 6, color: '#fff', padding: '5px 12px', fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: deletingUid === u.uid ? 'not-allowed' : 'pointer', fontFamily: 'Arial, sans-serif', opacity: deletingUid === u.uid ? 0.5 : 1 }}>
+                    {deletingUid === u.uid ? '...' : 'YES'}
+                  </button>
+                  <button onClick={() => setConfirmUid(null)} style={{ background: '#1e1e1e', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, color: '#888', padding: '5px 12px', fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: 'pointer', fontFamily: 'Arial, sans-serif' }}>NO</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmUid(u.uid)}
+                  style={{ background: 'rgba(229,9,20,0.1)', border: '1px solid rgba(229,9,20,0.2)', borderRadius: 6, color: '#e50914', padding: '6px 14px', fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: 'pointer', fontFamily: 'Arial, sans-serif', flexShrink: 0, transition: 'all 0.15s' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#e50914'; (e.currentTarget as HTMLElement).style.color = '#fff'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(229,9,20,0.1)'; (e.currentTarget as HTMLElement).style.color = '#e50914'; }}>
+                  DELETE
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({ users: 0, vipUsers: 0, content: 0, revenue: 0 });
   const [activity, setActivity] = useState<Activity[]>([]);
@@ -225,6 +334,7 @@ export default function AdminDashboard() {
         </div>
       </>)}
 
+      <DeleteUserCard />
       <ChangePasswordCard />
     </div>
   );
