@@ -4,9 +4,36 @@ import { doc, getDoc, collection, query, where, orderBy, getDocs, updateDoc, inc
 import { db } from '../lib/firebase';
 import { ContentDoc, EpisodeDoc, addToHistory, addToHistoryDb, getAllContent } from '../lib/db';
 import { useApp } from '../context/AppContext';
-import MuxPlayer from '@mux/mux-player-react';
 import VideoCard from '../components/VideoCard';
 import type { FeedCard } from '../data/content';
+
+function toEmbedUrl(url: string): string {
+  if (!url) return '';
+
+  // Google Drive: /file/d/FILE_ID/view → /file/d/FILE_ID/preview
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/?#&]+)/);
+  if (driveMatch) {
+    return `https://drive.google.com/file/d/${driveMatch[1]}/preview`;
+  }
+
+  // Google Drive open?id= format
+  const driveOpenMatch = url.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (driveOpenMatch) {
+    return `https://drive.google.com/file/d/${driveOpenMatch[1]}/preview`;
+  }
+
+  // YouTube watch URL
+  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&?#]+)/);
+  if (ytMatch) {
+    return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
+  }
+
+  // YouTube short embed (already /embed/)
+  if (url.includes('youtube.com/embed/')) return url;
+
+  // Return as-is for any other URL
+  return url;
+}
 
 const BADGE_CLASSES: Record<string, string> = {
   'FREE NOW': 'tag_RED_2-nUp', 'EXCLUSIVE': 'tag_RED_2-nUp', 'PREMIERE': 'tag_BLUE_o8YDy',
@@ -119,16 +146,16 @@ export default function PlayPage() {
         </div>
       );
     }
-    const isMuxId = currentVideo && !currentVideo.startsWith('http') && !currentVideo.startsWith('//');
+    const embedSrc = toEmbedUrl(currentVideo);
     return (
-      <MuxPlayer
-        style={{ width: '100%', aspectRatio: '16/9', background: '#000' }}
-        {...(isMuxId ? { playbackId: currentVideo } : { src: currentVideo })}
-        poster={content?.thumbnail || undefined}
+      <iframe
+        key={embedSrc}
+        src={embedSrc}
+        style={{ width: '100%', aspectRatio: '16/9', border: 'none', background: '#000', display: 'block' }}
+        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+        allowFullScreen
+        referrerPolicy="no-referrer-when-downgrade"
         title={currentTitle}
-        accentColor="#e50914"
-        autoPlay={false}
-        preload="metadata"
       />
     );
   };
